@@ -17,11 +17,11 @@ namespace po = boost::program_options;
 
 namespace service {
 
-struct Config_s {
+struct Config {
 
     typedef std::runtime_error BadInit_t;
 
-    GConfig_s() {}
+    Config() {}
 
     void init( int argc, char ** argv ) {
         // clear variables map
