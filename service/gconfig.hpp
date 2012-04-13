@@ -5,8 +5,8 @@
  * Generic configuration file object.
  */
 
-#ifndef _COMMONCONFIG_HPP
-#define _COMMONCONFIG_HPP
+#ifndef SERVICE_CONFIG_HPP
+#define SERVICE_CONFIG_HPP
 
 #include <fstream>
 #include <dbglog/dbglog.hpp>
@@ -15,7 +15,9 @@
 
 namespace po = boost::program_options;
 
-struct GConfig_s {
+namespace service {
+
+struct Config_s {
 
     typedef std::runtime_error BadInit_t;
 
@@ -138,4 +140,6 @@ private:
 
 };
 
-#endif // _COMMONCONFIG_HPP
+} // namespace service
+
+#endif // SERVICE_CONFIG_HPP
