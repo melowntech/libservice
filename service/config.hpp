@@ -119,6 +119,19 @@ struct Config {
 
     std::vector<std::string> args() const { return args_; }
 
+    template <class T>
+    T getPositional( uint i ) const {
+
+        if ( i > args_.size() - 1 )
+            throw BadInit_t( "Positional argument missing." );
+        
+        std::istringstream str( args_[i] );
+
+        T value;
+        str >> value;
+        return value;
+    }
+    
     void usage( char ** argv = 0x0 ) const {
 
         if ( argv != 0x0 ) {
