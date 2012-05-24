@@ -40,6 +40,7 @@ struct Config {
 
         addOptions( config );
 
+        
         po::options_description hidden("Hidden options");
         hidden.add_options()
             ( "positional", po::value<std::vector<std::string> >(),
@@ -111,6 +112,7 @@ struct Config {
             // well, let's just say it is empty (it probably is)
             args_ = std::vector<std::string>();
         }
+
     }
 
     virtual void addOptions( po::options_description & optionsdesc ) = 0;
@@ -120,11 +122,12 @@ struct Config {
     std::vector<std::string> args() const { return args_; }
 
     template <class T>
-    T getPositional( uint i ) const {
+    T getPositional( int i ) const {
 
-        if ( i > args_.size() - 1 )
-            throw BadInit_t( "Positional argument missing." );
-        
+        if ( i > (int) args_.size() - 1 )
+            LOGTHROW( err2, BadInit_t )
+                << "Positional argument " << i << " missing.";
+            
         std::istringstream str( args_[i] );
 
         T value;
