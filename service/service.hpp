@@ -18,13 +18,15 @@ struct immediate_exit {
 
 class service : boost::noncopyable {
 public:
-    service(const std::string &name)
-        : log_module_(dbglog::make_module(name)), name_(name)
+    service(const std::string &name, const std::string &version)
+        : name(name), version(version)
+        , log_module_(dbglog::make_module(name))
     {}
 
     int operator()(int argc, char *argv[]);
 
-    const std::string name() { return name_; }
+    const std::string name;
+    const std::string version;
 
 protected:
     virtual void configuration(po::options_description &desc) = 0;
@@ -39,8 +41,6 @@ protected:
 
 private:
     void configure(int argc, char *argv[]);
-
-    const std::string name_;
 };
 
 } // namespace service

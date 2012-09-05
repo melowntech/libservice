@@ -29,18 +29,42 @@ int service::operator()(int argc, char *argv[])
 
 void service::configure(int argc, char *argv[])
 {
-    po::options_description desc("Options");
+    po::options_description desc(name + ": command line options");
     desc.add_options()
         ("help", "produce help message")
+        ("version,v", "display version and terminate")
+        ("logmask", po::value<dbglog::mask>()
+         ->default_value(dbglog::mask(dbglog::get_mask()))
+         , "set dbglog logging mask")
+        ("config,f", po::value<std::string>()
+         , "path to configuration file")
+        ("help-all", "show help for both command line and config file")
         ;
 
     configuration(desc);
 
-    po::variables_map vars;
-    po::store(po::parse_command_line(argc, argv, desc), vars);
-    po::notify(vars);
+    po::variables_map vm;
+    po::store(po::parse_command_line(argc, argv, desc), vm);
 
-    configure(vars);
+    // update log mask if set
+    if (vm.count("logmask")) {
+        dbglog::set_mask(vm["logmask"].as<dbglog::mask>());
+    }
+
+    if (vm.count("version")) {
+        std::cout << name << ' ' << version << std::endl;
+        throw immediate_exit(EXIT_SUCCESS);
+    }
+
+    // check for help
+    if (vm.count("help")) {
+        std::cout << desc;
+        throw immediate_exit(EXIT_SUCCESS);
+    }
+
+    po::notify(vm);
+
+    configure(vm);
 }
 
 } // namespace service
