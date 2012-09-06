@@ -1,3 +1,7 @@
+#include <errno.h>
+
+#include <unistd.h>
+
 #include <service/service.hpp>
 
 namespace service {
@@ -17,6 +21,13 @@ int service::operator()(int argc, char *argv[])
     start();
     LOG(info4, log_module_) << "started";
 
+    if (daemonize_) {
+        if (-1 == daemon(false, false)) {
+            LOG(fatal) << "Failed to daemonize: " << errno;
+            return EXIT_FAILURE;
+        }
+    }
+
     int code(run());
     if (code) {
         LOG(err4, log_module_) << "terminated with error " << code;
@@ -29,8 +40,14 @@ int service::operator()(int argc, char *argv[])
 
 void service::configure(int argc, char *argv[])
 {
-    po::options_description desc(name + ": command line options");
-    desc.add_options()
+    po::options_description cmdline("");
+    po::options_description config("");
+    configuration(cmdline, config);
+
+    po::options_description all(name);
+
+    po::options_description genericCmdline("command line options");
+    genericCmdline.add_options()
         ("help", "produce help message")
         ("version,v", "display version and terminate")
         ("logmask", po::value<dbglog::mask>()
@@ -41,10 +58,17 @@ void service::configure(int argc, char *argv[])
         ("help-all", "show help for both command line and config file")
         ;
 
-    configuration(desc);
+    po::options_description genericConfig("configuration file options");
+    genericConfig.add_options()
+        ("daemonize", po::value<>(&daemonize_)
+         ->default_value(daemonize_)->implicit_value(true)
+        , "run in daemon mode")
+        ;
+
+    all.add(genericCmdline).add(cmdline).add(genericConfig).add(config);
 
     po::variables_map vm;
-    po::store(po::parse_command_line(argc, argv, desc), vm);
+    po::store(po::parse_command_line(argc, argv, all), vm);
 
     // update log mask if set
     if (vm.count("logmask")) {
@@ -58,7 +82,13 @@ void service::configure(int argc, char *argv[])
 
     // check for help
     if (vm.count("help")) {
-        std::cout << desc;
+        std::cout << name << ":\n" << genericCmdline << cmdline;
+        throw immediate_exit(EXIT_SUCCESS);
+    }
+
+    if (vm.count("help-all")) {
+        std::cout << name << ":\n" << genericCmdline << cmdline
+                  << '\n' << genericConfig << config;
         throw immediate_exit(EXIT_SUCCESS);
     }
 

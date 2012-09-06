@@ -21,6 +21,7 @@ public:
     service(const std::string &name, const std::string &version)
         : name(name), version(version)
         , log_module_(dbglog::make_module(name))
+        , daemonize_(false)
     {}
 
     int operator()(int argc, char *argv[]);
@@ -29,7 +30,8 @@ public:
     const std::string version;
 
 protected:
-    virtual void configuration(po::options_description &desc) = 0;
+    virtual void configuration(po::options_description &cmdline
+                               , po::options_description &config) = 0;
 
     virtual void configure(const po::variables_map &vars) = 0;
 
@@ -41,6 +43,8 @@ protected:
 
 private:
     void configure(int argc, char *argv[]);
+
+    bool daemonize_;
 };
 
 } // namespace service
