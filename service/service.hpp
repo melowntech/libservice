@@ -20,7 +20,7 @@ class service : boost::noncopyable {
 public:
     service(const std::string &name, const std::string &version)
         : name(name), version(version)
-        , log_module_(dbglog::make_module(name))
+        , log_(dbglog::make_module(name))
         , daemonize_(false)
     {}
 
@@ -39,7 +39,7 @@ protected:
 
     virtual int run() = 0;
 
-    dbglog::module log_module_;
+    dbglog::module log_;
 
 private:
     void configure(int argc, char *argv[]);
