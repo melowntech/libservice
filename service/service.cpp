@@ -1,27 +1,99 @@
 #include <errno.h>
 #include <unistd.h>
 
+#include <iostream>
 #include <fstream>
+
+#include <boost/asio.hpp>
 
 #include <service/service.hpp>
 
+namespace asio = boost::asio;
+
 namespace service {
+
+struct service::SignalHandler : boost::noncopyable {
+public:
+    SignalHandler()
+        : signals_(ios_, SIGTERM, SIGINT)
+        , terminated_(false)
+    {}
+
+    struct ScopedHandler {
+        ScopedHandler(SignalHandler &h) : h(h) { h.start(); }
+        ~ScopedHandler() { h.stop(); }
+
+        SignalHandler &h;
+    };
+
+    bool terminated() {
+        ios_.poll();
+        return terminated_;
+    }
+
+private:
+    void start() {
+        signals_.async_wait(boost::bind(&SignalHandler::signal, this
+                                        , asio::placeholders::error
+                                        , asio::placeholders::signal_number));
+    }
+
+    void stop() {
+        signals_.cancel();
+    }
+
+    void signal(const boost::system::error_code &e, int signo) {
+        if (e) {
+            if (boost::asio::error::operation_aborted == e) {
+                return;
+            }
+            start();
+        }
+
+        LOG(debug) << "SignalHandler received signal: <" << signo << ">.";
+        switch (signo) {
+        case SIGTERM:
+        case SIGINT:
+            LOG(info2) << "Terminate signal: <" << signo << ">.";
+            terminated_ = true;
+            break;
+        }
+        start();
+    }
+
+    asio::io_service ios_;
+    asio::signal_set signals_;
+    bool terminated_;
+};
+
+service::service(const std::string &name, const std::string &version)
+    : name(name), version(version)
+    , log_(dbglog::make_module(name))
+    , daemonize_(false)
+    , signalHandler_(new SignalHandler)
+{}
+
+service::~service()
+{}
 
 int service::operator()(int argc, char *argv[])
 {
+    dbglog::thread_id("main");
+    LOG(info4, log_) << "Service " << name << '-' << version << " started.";
+
     try {
         configure(argc, argv);
     } catch (const immediate_exit &e) {
         return e.code;
+    } catch (const po::error &e) {
+        std::cerr << name << ": " << e.what() << std::endl;
+        return EXIT_FAILURE;
     } catch (const std::exception &e) {
         LOG(fatal, log_) << "Configure failed: " << e.what();
         return EXIT_FAILURE;
     }
 
-    LOG(info4, log_) << "Starting.";
-    start();
-    LOG(info4, log_) << "Started";
-
+    // daemonize if asked to do so
     if (daemonize_) {
         if (-1 == daemon(false, false)) {
             LOG(fatal) << "Failed to daemonize: " << errno;
@@ -31,7 +103,17 @@ int service::operator()(int argc, char *argv[])
         LOG(info4, log_) << "Running in background.";
     }
 
-    int code(run());
+    int code = EXIT_SUCCESS;
+    {
+        SignalHandler::ScopedHandler signals(*signalHandler_);
+
+        LOG(info4, log_) << "Starting.";
+        start();
+        LOG(info4, log_) << "Started.";
+
+        code = run();
+    }
+
     if (code) {
         LOG(err4, log_) << "Terminated with error " << code;
     } else {
@@ -39,6 +121,10 @@ int service::operator()(int argc, char *argv[])
     }
 
     return code;
+}
+
+bool service::isRunning() {
+    return !signalHandler_->terminated();
 }
 
 void service::configure(int argc, char *argv[])

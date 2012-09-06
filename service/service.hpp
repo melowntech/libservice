@@ -2,8 +2,10 @@
 #define shared_service_service_hpp_included_
 
 #include <string>
+
 #include <boost/program_options.hpp>
 #include <boost/noncopyable.hpp>
+#include <boost/scoped_ptr.hpp>
 
 #include <dbglog/dbglog.hpp>
 
@@ -18,16 +20,16 @@ struct immediate_exit {
 
 class service : boost::noncopyable {
 public:
-    service(const std::string &name, const std::string &version)
-        : name(name), version(version)
-        , log_(dbglog::make_module(name))
-        , daemonize_(false)
-    {}
+    service(const std::string &name, const std::string &version);
+
+    ~service();
 
     int operator()(int argc, char *argv[]);
 
     const std::string name;
     const std::string version;
+
+    bool isRunning();
 
 protected:
     virtual void configuration(po::options_description &cmdline
@@ -45,6 +47,10 @@ private:
     void configure(int argc, char *argv[]);
 
     bool daemonize_;
+
+    struct SignalHandler;
+
+    boost::scoped_ptr<SignalHandler> signalHandler_;
 };
 
 } // namespace service
