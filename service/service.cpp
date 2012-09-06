@@ -14,13 +14,13 @@ int service::operator()(int argc, char *argv[])
     } catch (const immediate_exit &e) {
         return e.code;
     } catch (const std::exception &e) {
-        LOG(fatal, log_) << "configure failed: " << e.what();
+        LOG(fatal, log_) << "Configure failed: " << e.what();
         return EXIT_FAILURE;
     }
 
-    LOG(info4, log_) << "starting";
+    LOG(info4, log_) << "Starting.";
     start();
-    LOG(info4, log_) << "started";
+    LOG(info4, log_) << "Started";
 
     if (daemonize_) {
         if (-1 == daemon(false, false)) {
@@ -33,9 +33,9 @@ int service::operator()(int argc, char *argv[])
 
     int code(run());
     if (code) {
-        LOG(err4, log_) << "terminated with error " << code;
+        LOG(err4, log_) << "Terminated with error " << code;
     } else {
-        LOG(info4, log_) << "stopped";
+        LOG(info4, log_) << "Stopped";
     }
 
     return code;
