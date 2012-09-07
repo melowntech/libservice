@@ -79,7 +79,6 @@ service::~service()
 int service::operator()(int argc, char *argv[])
 {
     dbglog::thread_id("main");
-    LOG(info4, log_) << "Service " << name << '-' << version << " started.";
 
     try {
         configure(argc, argv);
@@ -92,6 +91,8 @@ int service::operator()(int argc, char *argv[])
         LOG(fatal, log_) << "Configure failed: " << e.what();
         return EXIT_FAILURE;
     }
+
+    LOG(info4, log_) << "Service " << name << '-' << version << " starting.";
 
     // daemonize if asked to do so
     if (daemonize_) {
@@ -107,7 +108,6 @@ int service::operator()(int argc, char *argv[])
     {
         SignalHandler::ScopedHandler signals(*signalHandler_);
 
-        LOG(info4, log_) << "Starting.";
         start();
         LOG(info4, log_) << "Started.";
 
