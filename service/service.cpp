@@ -152,7 +152,7 @@ void service::configure(int argc, char *argv[])
         ("log.console", po::value<bool>()->default_value(true)
          , "enable console logging (always off when daemonized)")
 
-        ("daemonize", po::value<>(&daemonize_)
+        ("daemonize", po::value(&daemonize_)
          ->default_value(daemonize_)->implicit_value(true)
         , "run in daemon mode")
         ;
