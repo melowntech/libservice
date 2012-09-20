@@ -1,5 +1,5 @@
 set(service_SOURCES
-    service.cpp
+    program.cpp service.cpp cmdline.cpp
 )
 
 add_library(service STATIC ${service_SOURCES})
