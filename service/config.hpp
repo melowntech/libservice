@@ -105,17 +105,9 @@ struct Config {
             throw BadInit_t( e.what() );
         }
 
-        // fill positional options
-        try {
-            args_ = vm_["positional"].as<std::vector<std::string > >();
-        } catch ( boost::bad_any_cast & ) {
-            // well, let's just say it is empty (it probably is)
-            args_ = std::vector<std::string>();
-        }
+        fillPositional();
 
     }
-
-    virtual void addOptions( po::options_description & optionsdesc ) = 0;
 
     bool helpOnly() const { return helpOnly_; }
 
@@ -147,10 +139,32 @@ struct Config {
 
     const po::variables_map& vm() const { return vm_; };
 
+protected :
+
+    virtual void addOptions( po::options_description & optionsdesc ) = 0;
+
+    virtual void fillPositional() {
+
+        // fill positional options
+        try {
+            args_ = vm_["positional"].as<std::vector<std::string > >();
+        } catch ( boost::bad_any_cast & ) {
+            // well, let's just say it is empty (it probably is)
+            args_ = std::vector<std::string>();
+        }
+    }
+
+    std::vector<std::string> args_;
+
+    template < typename T >
+    po::typed_value<T>* make_value( T* storeTo ) {
+        return po::value<T>( storeTo );
+    }
+
+    
 private:
     po::variables_map vm_;
 
-    std::vector<std::string> args_;
     bool helpOnly_;
     po::options_description visible;
 
