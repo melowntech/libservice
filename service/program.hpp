@@ -19,7 +19,7 @@ struct immediate_exit {
 
 class program : boost::noncopyable {
 public:
-    ~program();
+    virtual ~program();
 
     const std::string name;
     const std::string version;
