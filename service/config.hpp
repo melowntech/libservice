@@ -22,6 +22,7 @@ struct Config {
     typedef std::runtime_error BadInit_t;
 
     Config() {}
+    virtual ~Config() {}
 
     void init( int argc, char ** argv ) {
         // clear variables map
