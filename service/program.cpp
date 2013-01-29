@@ -81,8 +81,9 @@ void program::configureImpl(int argc, char *argv[]
             f.close();
 
             LOG(info3) << "Loaded configuration from <" << cfg << ">.";
-        } catch(std::ios_base::failure) {
-            LOG(fatal) << "Cannot read config file <" << cfg << ">.";
+        } catch(const std::ios_base::failure &e) {
+            LOG(fatal) << "Cannot read config file <" << cfg << ">: "
+                       << e.what();
             throw immediate_exit(EXIT_FAILURE);
         }
     }
