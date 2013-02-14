@@ -20,6 +20,9 @@ protected:
     virtual void configure(const po::variables_map &vars) = 0;
 
     virtual int run() = 0;
+
+    virtual bool help(std::ostream &out, const std::string &what)
+        const { return program::help(out, what); }
 };
 
 } // namespace service

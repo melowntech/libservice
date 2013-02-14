@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <set>
 
 #include "program.hpp"
 
@@ -32,6 +33,20 @@ void program::configure(int argc, char *argv[]
     }
 }
 
+namespace {
+
+std::pair<std::string, std::string> helpParser(const std::string& s)
+{
+    if (s.find("--help-") == 0) {
+        auto value(s.substr(7));
+        return {"@help", value.empty() ? " " : value};
+    } else {
+        return {"", ""};
+    }
+}
+
+} // namespace
+
 void program::configureImpl(int argc, char *argv[]
                             , po::options_description genericConfig)
 {
@@ -59,13 +74,20 @@ void program::configureImpl(int argc, char *argv[]
          , "enable console logging (always off when daemonized)")
         ;
 
+    po::options_description hiddenCmdline("hidden command line options");
+    hiddenCmdline.add_options()
+        ("@help", po::value<std::vector<std::string>>(), "extra help")
+        ;
+
     // all config options
     po::options_description all(name);
     all.add(genericCmdline).add(cmdline)
-        .add(genericConfig).add(config);
+        .add(genericConfig).add(config)
+        .add(hiddenCmdline);
 
     po::variables_map vm;
-    po::store(po::parse_command_line(argc, argv, all), vm);
+    po::store(po::command_line_parser(argc, argv).options(all)
+              .extra_parser(helpParser).run(), vm);
 
     if (vm.count("config")) {
         const std::string cfg(vm["config"].as<std::string>());
@@ -93,15 +115,37 @@ void program::configureImpl(int argc, char *argv[]
         throw immediate_exit(EXIT_SUCCESS);
     }
 
-    // check for help
-    if (vm.count("help")) {
-        std::cout << name << ":\n" << genericCmdline << cmdline;
-        throw immediate_exit(EXIT_SUCCESS);
+    std::set<std::string> helps;
+    if (vm.count("@help")) {
+        auto what(vm["@help"].as<std::vector<std::string>>());
+        helps.insert(what.begin(), what.end());
     }
 
-    if (vm.count("help-all")) {
+    // check for help
+    if (helps.find("all") != helps.end()) {
         std::cout << name << ":\n" << genericCmdline << cmdline
                   << '\n' << genericConfig << config;
+        helps.erase("all");
+        if (helps.empty()) {
+            throw immediate_exit(EXIT_SUCCESS);
+        }
+        std::cout << '\n';
+    } else if (vm.count("help")) {
+        std::cout << name << ":\n" << genericCmdline << cmdline;
+        if (helps.empty()) {
+            throw immediate_exit(EXIT_SUCCESS);
+        }
+        std::cout << '\n';
+    }
+
+    if (!helps.empty()) {
+        for (const auto &what : helps) {
+            if (!help(std::cout, what)) {
+                throw po::unknown_option("--help-" + what);
+            }
+            std::cout << '\n';
+        }
+
         throw immediate_exit(EXIT_SUCCESS);
     }
 

@@ -2,6 +2,7 @@
 #define shared_service_program_hpp_included_
 
 #include <string>
+#include <ostream>
 
 #include <boost/program_options.hpp>
 #include <boost/noncopyable.hpp>
@@ -31,6 +32,15 @@ protected:
                                , po::options_description &config) = 0;
 
     virtual void configure(const po::variables_map &vars) = 0;
+
+    /** Produces help for *what*.
+     *  Returns false if help for *what* is not supported.
+     *
+     *  You should register --help-what in cmdline configuration to inform
+     *  user about such help availability.
+     */
+    virtual bool help(std::ostream &out, const std::string &what)
+        const { (void) out; (void) what; return false; }
 
     dbglog::module log_;
 

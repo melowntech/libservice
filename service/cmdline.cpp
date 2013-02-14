@@ -14,8 +14,10 @@ int cmdline::operator()(int argc, char *argv[])
     dbglog::thread_id("main");
 
     try {
-        program::configure(argc, argv, po::options_description
-                           ("configuration file options"));
+        program::configure
+            (argc, argv, po::options_description
+             ("configuration file options (all options can be overridden "
+              "on command line)"));
     } catch (const immediate_exit &e) {
         return e.code;
     }

@@ -74,7 +74,10 @@ int service::operator()(int argc, char *argv[])
     dbglog::thread_id("main");
 
     try {
-        po::options_description genericConfig("configuration file options");
+        po::options_description genericConfig
+            ("configuration file options (all options can be overridden "
+             "on command line)");
+
         genericConfig.add_options()
             ("daemonize", po::value<>(&daemonize_)
              ->default_value(daemonize_)->implicit_value(true)
