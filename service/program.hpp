@@ -18,6 +18,8 @@ struct immediate_exit {
     int code;
 };
 
+constexpr int DISABLE_CONFIG_HELP = 0x01;
+
 class program : boost::noncopyable {
 public:
     virtual ~program();
@@ -25,8 +27,10 @@ public:
     const std::string name;
     const std::string version;
 
+    int flags() const { return flags_; }
+
 protected:
-    program(const std::string &name, const std::string &version);
+    program(const std::string &name, const std::string &version, int flags);
 
     virtual void configuration(po::options_description &cmdline
                                , po::options_description &config) = 0;
@@ -50,6 +54,8 @@ protected:
 private:
     void configureImpl(int argc, char *argv[]
                        , po::options_description genericConfig);
+
+    int flags_;
 };
 
 } // namespace service

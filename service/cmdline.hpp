@@ -7,7 +7,8 @@ namespace service {
 
 class cmdline : protected program {
 public:
-    cmdline(const std::string &name, const std::string &version);
+    cmdline(const std::string &name, const std::string &version
+            , int flags = 0x0);
 
     ~cmdline();
 

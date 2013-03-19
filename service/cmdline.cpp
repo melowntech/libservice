@@ -2,8 +2,9 @@
 
 namespace service {
 
-cmdline::cmdline(const std::string &name, const std::string &version)
-    : program(name, version)
+cmdline::cmdline(const std::string &name, const std::string &version
+                 , int flags)
+    : program(name, version, flags)
 {}
 
 cmdline::~cmdline()

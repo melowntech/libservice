@@ -60,8 +60,9 @@ private:
     bool terminated_;
 };
 
-service::service(const std::string &name, const std::string &version)
-    : program(name, version)
+service::service(const std::string &name, const std::string &version
+                 , int flags)
+    : program(name, version, flags)
     , daemonize_(false)
     , signalHandler_(new SignalHandler)
 {}

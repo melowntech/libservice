@@ -9,9 +9,10 @@
 
 namespace service {
 
-program::program(const std::string &name, const std::string &version)
+program::program(const std::string &name, const std::string &version
+                 , int flags)
     : name(name), version(version)
-    , log_(dbglog::make_module(name))
+    , log_(dbglog::make_module(name)), flags_(flags)
 {
 }
 
@@ -63,7 +64,6 @@ void program::configureImpl(int argc, char *argv[]
         ("help-all", "show help for both command line and config file")
         ;
 
-    // po::options_description genericConfig("configuration file options");
     genericConfig.add_options()
         ("log.mask", po::value<dbglog::mask>()
          ->default_value(dbglog::mask(dbglog::get_mask()))
@@ -71,7 +71,7 @@ void program::configureImpl(int argc, char *argv[]
         ("log.file", po::value<std::string>()
          , "set dbglog output file (non by default)")
         ("log.console", po::value<bool>()->default_value(true)
-         , "enable console logging (always off when daemonized)")
+         , "enable console logging")
         ;
 
     po::options_description hiddenCmdline("hidden command line options");
@@ -124,7 +124,12 @@ void program::configureImpl(int argc, char *argv[]
     // check for help
     if (helps.find("all") != helps.end()) {
         std::cout << name << ":\n" << genericCmdline << cmdline
-                  << '\n' << genericConfig << config;
+                  << '\n' << genericConfig;
+        if (!(flags_ & DISABLE_CONFIG_HELP)) {
+            // only when allowed
+            std::cout << config;
+        }
+
         helps.erase("all");
         if (helps.empty()) {
             throw immediate_exit(EXIT_SUCCESS);

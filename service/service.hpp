@@ -9,7 +9,8 @@ namespace service {
 
 class service : protected program {
 public:
-    service(const std::string &name, const std::string &version);
+    service(const std::string &name, const std::string &version
+            , int flags = 0x0);
 
     ~service();
 
