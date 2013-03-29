@@ -35,10 +35,15 @@ protected:
     virtual void configuration(po::options_description &cmdline
                                , po::options_description &config) = 0;
 
+    virtual void configuration(po::positional_options_description &pd) = 0;
+
     virtual void configure(const po::variables_map &vars) = 0;
 
     /** Produces help for *what*.
      *  Returns false if help for *what* is not supported.
+     *
+     *  Called with \param what empty to obtain program's description. Return
+     *  value is ignored in this case.
      *
      *  You should register --help-what in cmdline configuration to inform
      *  user about such help availability.

@@ -32,4 +32,6 @@ int cmdline::operator()(int argc, char *argv[])
     return code;
 }
 
+void cmdline::configuration(po::positional_options_description &) {}
+
 } // namespace cmdline

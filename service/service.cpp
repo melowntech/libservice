@@ -125,4 +125,6 @@ bool service::isRunning() {
     return !signalHandler_->terminated();
 }
 
+void service::configuration(po::positional_options_description &) {}
+
 } // namespace service

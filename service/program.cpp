@@ -53,7 +53,9 @@ void program::configureImpl(int argc, char *argv[]
 {
     po::options_description cmdline("");
     po::options_description config("");
+    po::positional_options_description positionals;
     configuration(cmdline, config);
+    configuration(positionals);
 
     po::options_description genericCmdline("command line options");
     genericCmdline.add_options()
@@ -87,7 +89,7 @@ void program::configureImpl(int argc, char *argv[]
 
     po::variables_map vm;
     po::store(po::command_line_parser(argc, argv).options(all)
-              .extra_parser(helpParser).run(), vm);
+              .positional(positionals).extra_parser(helpParser).run(), vm);
 
     if (vm.count("config")) {
         const std::string cfg(vm["config"].as<std::string>());
@@ -123,7 +125,12 @@ void program::configureImpl(int argc, char *argv[]
 
     // check for help
     if (helps.find("all") != helps.end()) {
-        std::cout << name << ":\n" << genericCmdline << cmdline
+        std::cout << name << ": ";
+
+        // print app help help
+        help(std::cout, std::string());
+
+        std::cout << "\n" << genericCmdline << cmdline
                   << '\n' << genericConfig;
         if (!(flags_ & DISABLE_CONFIG_HELP)) {
             // only when allowed
@@ -136,7 +143,12 @@ void program::configureImpl(int argc, char *argv[]
         }
         std::cout << '\n';
     } else if (vm.count("help")) {
-        std::cout << name << ":\n" << genericCmdline << cmdline;
+        std::cout << name << ": ";
+
+        // print app help help
+        help(std::cout, std::string());
+
+        std::cout << "\n" << genericCmdline << cmdline;
         if (helps.empty()) {
             throw immediate_exit(EXIT_SUCCESS);
         }
