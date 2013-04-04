@@ -20,11 +20,8 @@ public:
 
 protected:
     virtual void configuration(po::options_description &cmdline
-                               , po::options_description &config) = 0;
-
-    /** To be overriden in subclasses. Not pure virtual not to break existing
-        code. */
-    virtual void configuration(po::positional_options_description &pd);
+                               , po::options_description &config
+                               , po::positional_options_description &pd) = 0;
 
     virtual void configure(const po::variables_map &vars) = 0;
 

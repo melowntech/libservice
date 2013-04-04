@@ -54,8 +54,7 @@ void program::configureImpl(int argc, char *argv[]
     po::options_description cmdline("");
     po::options_description config("");
     po::positional_options_description positionals;
-    configuration(cmdline, config);
-    configuration(positionals);
+    configuration(cmdline, config, positionals);
 
     po::options_description genericCmdline("command line options");
     genericCmdline.add_options()

@@ -32,8 +32,6 @@ int cmdline::operator()(int argc, char *argv[])
     return code;
 }
 
-void cmdline::configuration(po::positional_options_description &) {}
-
 void cmdline::configure(const std::vector<std::string> &)
 {
     throw po::error

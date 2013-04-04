@@ -125,8 +125,6 @@ bool service::isRunning() {
     return !signalHandler_->terminated();
 }
 
-void service::configuration(po::positional_options_description &) {}
-
 void service::configure(const std::vector<std::string> &)
 {
     throw po::error

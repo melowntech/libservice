@@ -35,9 +35,8 @@ protected:
     program(const std::string &name, const std::string &version, int flags);
 
     virtual void configuration(po::options_description &cmdline
-                               , po::options_description &config) = 0;
-
-    virtual void configuration(po::positional_options_description &pd) = 0;
+                               , po::options_description &config
+                               , po::positional_options_description &pd) = 0;
 
     virtual void configure(const po::variables_map &vars) = 0;
 
