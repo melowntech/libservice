@@ -91,7 +91,7 @@ void program::configureImpl(int argc, char *argv[]
     auto parser(po::command_line_parser(argc, argv).options(all)
                  .positional(positionals).extra_parser(helpParser));
     if (flags_ & ENABLE_UNRECOGNIZED_OPTIONS) {
-        parser = parser.allow_unregistered();
+        parser.allow_unregistered();
     }
 
     auto parsed(parser.run());
