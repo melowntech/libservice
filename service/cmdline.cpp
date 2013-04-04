@@ -34,4 +34,16 @@ int cmdline::operator()(int argc, char *argv[])
 
 void cmdline::configuration(po::positional_options_description &) {}
 
+void cmdline::configure(const std::vector<std::string> &)
+{
+    throw po::error
+        ("Program asked to collect unrecognized options "
+         "although it is not processing them. Go fix your program.");
+}
+
+inline bool cmdline::help(std::ostream &, const std::string &)
+{
+    return false;
+}
+
 } // namespace cmdline

@@ -28,9 +28,13 @@ protected:
 
     virtual void configure(const po::variables_map &vars) = 0;
 
+    virtual void configure(const std::vector<std::string> &unrecognized);
+
     virtual void start() = 0;
 
     virtual int run() = 0;
+
+    virtual bool help(std::ostream &out, const std::string &what);
 
 private:
     bool daemonize_;

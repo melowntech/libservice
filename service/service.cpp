@@ -127,4 +127,16 @@ bool service::isRunning() {
 
 void service::configuration(po::positional_options_description &) {}
 
+void service::configure(const std::vector<std::string> &)
+{
+    throw po::error
+        ("Program asked to collect unrecognized options "
+         "although it is not processing them. Go fix your program.");
+}
+
+inline bool service::help(std::ostream &, const std::string &)
+{
+    return false;
+}
+
 } // namespace service

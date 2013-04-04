@@ -24,10 +24,11 @@ protected:
 
     virtual void configure(const po::variables_map &vars) = 0;
 
+    virtual void configure(const std::vector<std::string> &unrecognized);
+
     virtual int run() = 0;
 
-    virtual bool help(std::ostream &out, const std::string &what)
-        const { return program::help(out, what); }
+    virtual bool help(std::ostream &out, const std::string &what);
 };
 
 } // namespace service

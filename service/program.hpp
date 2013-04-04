@@ -1,6 +1,7 @@
 #ifndef shared_service_program_hpp_included_
 #define shared_service_program_hpp_included_
 
+#include <vector>
 #include <string>
 #include <ostream>
 
@@ -19,6 +20,7 @@ struct immediate_exit {
 };
 
 constexpr int DISABLE_CONFIG_HELP = 0x01;
+constexpr int ENABLE_UNRECOGNIZED_OPTIONS = 0x02;
 
 class program : boost::noncopyable {
 public:
@@ -38,6 +40,8 @@ protected:
     virtual void configuration(po::positional_options_description &pd) = 0;
 
     virtual void configure(const po::variables_map &vars) = 0;
+
+    virtual void configure(const std::vector<std::string> &unrecognized) = 0;
 
     /** Produces help for *what*.
      *  Returns false if help for *what* is not supported.

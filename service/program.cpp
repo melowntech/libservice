@@ -87,9 +87,17 @@ void program::configureImpl(int argc, char *argv[]
         .add(genericConfig).add(config)
         .add(hiddenCmdline);
 
+    // parse cmdline
+    auto parser(po::command_line_parser(argc, argv).options(all)
+                 .positional(positionals).extra_parser(helpParser));
+    if (flags_ & ENABLE_UNRECOGNIZED_OPTIONS) {
+        parser = parser.allow_unregistered();
+    }
+
+    auto parsed(parser.run());
+
     po::variables_map vm;
-    po::store(po::command_line_parser(argc, argv).options(all)
-              .positional(positionals).extra_parser(helpParser).run(), vm);
+    po::store(parsed, vm);
 
     if (vm.count("config")) {
         const std::string cfg(vm["config"].as<std::string>());
@@ -184,6 +192,12 @@ void program::configureImpl(int argc, char *argv[]
     po::notify(vm);
 
     configure(vm);
+
+    if (flags_ & ENABLE_UNRECOGNIZED_OPTIONS) {
+        // process unrecognized options
+        configure(collect_unrecognized
+                  (parsed.options, po::include_positional));
+    }
 }
 
 } // namespace service
