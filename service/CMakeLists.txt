@@ -1,6 +1,8 @@
 define_module(LIBRARY service
   DEPENDS dbglog Boost_PROGRAM_OPTIONS Boost_SYSTEM)
 
+compile_with_hostname()
+
 set(service_SOURCES
     program.cpp service.cpp cmdline.cpp
 )

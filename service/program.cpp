@@ -7,6 +7,10 @@
 
 #include "program.hpp"
 
+#ifndef BUILDSYS_HOSTNAME
+#define "unknown"
+#endif
+
 namespace service {
 
 program::program(const std::string &name, const std::string &version
@@ -130,7 +134,10 @@ void program::configureImpl(int argc, char *argv[]
     }
 
     if (vm.count("version")) {
-        std::cout << name << ' ' << version << std::endl;
+        std::cout
+            << name << ' ' << version
+            << (" (built on " __TIMESTAMP__ " at " BUILDSYS_HOSTNAME ")")
+            << std::endl;
         throw immediate_exit(EXIT_SUCCESS);
     }
 
