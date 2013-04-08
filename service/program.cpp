@@ -46,6 +46,8 @@ std::pair<std::string, std::string> helpParser(const std::string& s)
     }
 }
 
+const char *EXTRA_OPTIONS = "\n";
+
 } // namespace
 
 void program::configureImpl(int argc, char *argv[]
@@ -85,6 +87,14 @@ void program::configureImpl(int argc, char *argv[]
     all.add(genericCmdline).add(cmdline)
         .add(genericConfig).add(config)
         .add(hiddenCmdline);
+
+    po::options_description extra;
+    if (flags_ & ENABLE_UNRECOGNIZED_OPTIONS) {
+        extra.add_options()
+            (EXTRA_OPTIONS, po::value<std::vector<std::string> >());
+        all.add(extra);
+        positionals.add(EXTRA_OPTIONS, -1);
+    }
 
     // parse cmdline
     auto parser(po::command_line_parser(argc, argv).options(all)
@@ -193,9 +203,22 @@ void program::configureImpl(int argc, char *argv[]
     configure(vm);
 
     if (flags_ & ENABLE_UNRECOGNIZED_OPTIONS) {
-        // process unrecognized options
-        configure(collect_unrecognized
-                  (parsed.options, po::include_positional));
+        /* same as collect_unrecognized(parsed.options, po::include_positional)
+         * except only unknown positionals are collected
+         */
+        std::vector<std::string> un;
+        for (const auto &opt : parsed.options) {
+            if (opt.unregistered
+                || ((opt.position_key >= 0)
+                    && (positionals.name_for_position(opt.position_key)
+                        == EXTRA_OPTIONS)))
+           {
+               un.insert(un.end(), opt.original_tokens.begin()
+                         , opt.original_tokens.end());
+           }
+        }
+
+        configure(un);
     }
 }
 
