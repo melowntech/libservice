@@ -11,6 +11,12 @@
 #define "unknown"
 #endif
 
+#ifdef BUILDSYS_CUSTOMER
+#define LOCAL_BUILDSYS_CUSTOMER_INFO " for " BUILDSYS_CUSTOMER
+#else
+#define LOCAL_BUILDSYS_CUSTOMER_INFO ""
+#endif
+
 namespace service {
 
 program::program(const std::string &name, const std::string &version
@@ -136,7 +142,8 @@ void program::configureImpl(int argc, char *argv[]
     if (vm.count("version")) {
         std::cout
             << name << ' ' << version
-            << (" (built on " __TIMESTAMP__ " at " BUILDSYS_HOSTNAME ")")
+            << (" (built on " __TIMESTAMP__ " at " BUILDSYS_HOSTNAME
+                LOCAL_BUILDSYS_CUSTOMER_INFO ")")
             << std::endl;
         throw immediate_exit(EXIT_SUCCESS);
     }
