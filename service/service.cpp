@@ -8,9 +8,9 @@ namespace service {
 
 struct service::SignalHandler : boost::noncopyable {
 public:
-    SignalHandler()
+    SignalHandler(dbglog::module &log)
         : signals_(ios_, SIGTERM, SIGINT)
-        , terminated_(false)
+        , terminated_(false), log_(log)
     {}
 
     struct ScopedHandler {
@@ -44,11 +44,12 @@ private:
             start();
         }
 
-        LOG(debug) << "SignalHandler received signal: <" << signo << ">.";
+        LOG(debug, log_)
+            << "SignalHandler received signal: <" << signo << ">.";
         switch (signo) {
         case SIGTERM:
         case SIGINT:
-            LOG(info2) << "Terminate signal: <" << signo << ">.";
+            LOG(info2, log_) << "Terminate signal: <" << signo << ">.";
             terminated_ = true;
             break;
         }
@@ -58,13 +59,14 @@ private:
     asio::io_service ios_;
     asio::signal_set signals_;
     bool terminated_;
+    dbglog::module &log_;
 };
 
 service::service(const std::string &name, const std::string &version
                  , int flags)
     : program(name, version, flags)
     , daemonize_(false)
-    , signalHandler_(new SignalHandler)
+    , signalHandler_(new SignalHandler(log_))
 {}
 
 service::~service()
