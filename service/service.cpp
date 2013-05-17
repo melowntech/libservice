@@ -20,6 +20,8 @@ public:
         SignalHandler &h;
     };
 
+    void terminate() { terminated_ = true; }
+
     bool terminated() {
         ios_.poll();
         return terminated_;
@@ -121,6 +123,11 @@ int service::operator()(int argc, char *argv[])
     }
 
     return code;
+}
+
+void service::stop()
+{
+    signalHandler_->terminate();
 }
 
 bool service::isRunning() {

@@ -18,6 +18,8 @@ public:
 
     bool isRunning();
 
+    void stop();
+
 protected:
     virtual void configuration(po::options_description &cmdline
                                , po::options_description &config
