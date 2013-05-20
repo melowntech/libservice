@@ -4,15 +4,9 @@
 #include <boost/scoped_ptr.hpp>
 
 #include "program.hpp"
+#include "runable.hpp"
 
 namespace service {
-
-class runable : boost::noncopyable {
-public:
-    virtual ~runable();
-    virtual bool isRunning() = 0;
-    virtual void stop() = 0;
-};
 
 class service : protected program, public runable {
 public:

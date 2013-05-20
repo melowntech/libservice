@@ -7,6 +7,7 @@ set(service_SOURCES
     program.hpp program.cpp
     service.hpp service.cpp
     cmdline.hpp cmdline.cpp
+    runable.hpp
 )
 
 add_library(service STATIC ${service_SOURCES})
