@@ -110,7 +110,11 @@ int service::operator()(int argc, char *argv[])
     {
         SignalHandler::ScopedHandler signals(*signalHandler_);
 
-        start();
+        try {
+            start();
+        } catch (const immediate_exit &e) {
+            return e.code;
+        }
         LOG(info4, log_) << "Started.";
 
         code = run();
