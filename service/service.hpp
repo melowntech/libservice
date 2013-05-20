@@ -7,7 +7,14 @@
 
 namespace service {
 
-class service : protected program {
+class runable : boost::noncopyable {
+public:
+    virtual ~runable();
+    virtual bool isRunning() = 0;
+    virtual void stop() = 0;
+};
+
+class service : protected program, public runable {
 public:
     service(const std::string &name, const std::string &version
             , int flags = 0x0);

@@ -1,17 +1,26 @@
 #include <boost/asio.hpp>
+#include <boost/interprocess/anonymous_shared_memory.hpp>
 
 #include "service.hpp"
 
 namespace asio = boost::asio;
+namespace bi = boost::interprocess;
 
 namespace service {
+
+runable::~runable()
+{
+}
 
 struct service::SignalHandler : boost::noncopyable {
 public:
     SignalHandler(dbglog::module &log)
         : signals_(ios_, SIGTERM, SIGINT)
-        , terminated_(false), log_(log)
-    {}
+        , mem_(bi::anonymous_shared_memory(1024))
+        , terminated_(*static_cast<bool*>(mem_.get_address())), log_(log)
+    {
+        terminated_ = false;
+    }
 
     struct ScopedHandler {
         ScopedHandler(SignalHandler &h) : h(h) { h.start(); }
@@ -60,7 +69,8 @@ private:
 
     asio::io_service ios_;
     asio::signal_set signals_;
-    bool terminated_;
+    bi::mapped_region mem_;
+    bool &terminated_;
     dbglog::module &log_;
 };
 

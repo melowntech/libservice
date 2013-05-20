@@ -4,7 +4,9 @@ define_module(LIBRARY service
 compile_with_hostname()
 
 set(service_SOURCES
-    program.cpp service.cpp cmdline.cpp
+    program.hpp program.cpp
+    service.hpp service.cpp
+    cmdline.hpp cmdline.cpp
 )
 
 add_library(service STATIC ${service_SOURCES})
