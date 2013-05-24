@@ -128,6 +128,12 @@ int service::operator()(int argc, char *argv[])
         } catch (const immediate_exit &e) {
             return e.code;
         }
+
+        if (!isRunning()) {
+            LOG(info4, log_) << "Terminated during startup.";
+            return EXIT_FAILURE;
+        }
+
         LOG(info4, log_) << "Started.";
 
         code = run();
