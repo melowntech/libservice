@@ -85,6 +85,8 @@ void program::configureImpl(int argc, char *argv[]
          , "set dbglog output file (non by default)")
         ("log.console", po::value<bool>()->default_value(true)
          , "enable console logging")
+        ("log.timePrecision", po::value<unsigned short>()->default_value(0)
+         , "set logged time sub-second precision (0-6 decimals)")
         ;
 
     po::options_description hiddenCmdline("hidden command line options");
@@ -210,6 +212,11 @@ void program::configureImpl(int argc, char *argv[]
     // enable/disable log console if set
     if (vm.count("log.console")) {
         dbglog::log_console(vm["log.console"].as<bool>());
+    }
+
+    if (vm.count("log.timePrecision")) {
+        dbglog::log_time_precision
+            (vm["log.timePrecision"].as<unsigned short>());
     }
 
     po::notify(vm);
