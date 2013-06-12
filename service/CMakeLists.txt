@@ -11,7 +11,6 @@ set(service_SOURCES
 )
 
 add_library(service STATIC ${service_SOURCES})
-set_target_properties(service PROPERTIES ARCHIVE_OUTPUT_DIRECTORY
-  ${CMAKE_SOURCE_DIR}/lib)
+buildsys_library(service)
 
 target_link_libraries(service ${MODULE_LIBRARIES})
