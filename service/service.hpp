@@ -1,7 +1,7 @@
 #ifndef shared_service_service_hpp_included_
 #define shared_service_service_hpp_included_
 
-#include <boost/scoped_ptr.hpp>
+#include <memory>
 
 #include "program.hpp"
 #include "runable.hpp"
@@ -40,8 +40,7 @@ private:
     bool daemonize_;
 
     struct SignalHandler;
-
-    boost::scoped_ptr<SignalHandler> signalHandler_;
+    std::unique_ptr<SignalHandler> signalHandler_;
 };
 
 } // namespace service

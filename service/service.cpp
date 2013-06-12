@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <memory>
 #include <atomic>
 
@@ -15,13 +16,24 @@ runable::~runable()
 {
 }
 
+namespace {
+    inline void* getAddress(bi::mapped_region &mem, std::size_t offset = 0)
+    {
+        return static_cast<char*>(mem.get_address()) + offset;
+    }
+}
+
 struct service::SignalHandler : boost::noncopyable {
 public:
-    SignalHandler(dbglog::module &log)
-        : signals_(ios_, SIGTERM, SIGINT)
+    SignalHandler(dbglog::module &log, const program &owner)
+        : signals_(ios_, SIGTERM, SIGINT, SIGHUP)
         , mem_(bi::anonymous_shared_memory(1024))
-        , terminated_(* new (mem_.get_address()) std::atomic_bool(false))
-        , log_(log)
+        , terminated_(* new (getAddress(mem_)) std::atomic_bool(false))
+          // TODO: what about alignment?
+        , logRotateEvent_(* new (getAddress(mem_, sizeof(std::atomic_bool)))
+                          std::atomic<std::uint64_t>(0))
+        , lastLogRotateEvent_(0)
+        , log_(log), owner_(owner)
     {
     }
 
@@ -34,8 +46,23 @@ public:
 
     void terminate() { terminated_ = true; }
 
-    bool terminated() {
+    /** Processes events and returns whether we should terminate.
+     */
+    bool process() {
         ios_.poll();
+
+        // TODO: last event should be (process-local) atomic to handle multiple
+        // threads calling this function
+        auto value(logRotateEvent_.load());
+        if (value != lastLogRotateEvent_) {
+            LOG(info3) << "Logrotate: <" << owner_.logFile() << ">.";
+            dbglog::log_file(owner_.logFile());
+            LOG(info4, log_)
+                << "Service " << owner_.name << '-' << owner_.version
+                << ": log rotated.";
+            lastLogRotateEvent_ = value;
+        }
+
         return terminated_;
     }
 
@@ -66,6 +93,11 @@ private:
             LOG(info2, log_) << "Terminate signal: <" << signo << ">.";
             terminated_ = true;
             break;
+
+        case SIGHUP:
+            // mark logrotate
+            ++logRotateEvent_;
+            break;
         }
         start();
     }
@@ -74,14 +106,16 @@ private:
     asio::signal_set signals_;
     bi::mapped_region mem_;
     std::atomic_bool &terminated_;
+    std::atomic<std::uint64_t> &logRotateEvent_;
+    std::uint64_t lastLogRotateEvent_;
     dbglog::module &log_;
+    const program &owner_;
 };
 
 service::service(const std::string &name, const std::string &version
                  , int flags)
     : program(name, version, flags)
     , daemonize_(false)
-    , signalHandler_(new SignalHandler(log_))
 {}
 
 service::~service()
@@ -106,6 +140,8 @@ int service::operator()(int argc, char *argv[])
     } catch (const immediate_exit &e) {
         return e.code;
     }
+
+    signalHandler_.reset(new SignalHandler(log_, *this));
 
     LOG(info4, log_) << "Service " << name << '-' << version << " starting.";
 
@@ -154,7 +190,7 @@ void service::stop()
 }
 
 bool service::isRunning() {
-    return !signalHandler_->terminated();
+    return !signalHandler_->process();
 }
 
 void service::configure(const std::vector<std::string> &)

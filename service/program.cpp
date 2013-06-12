@@ -81,8 +81,8 @@ void program::configureImpl(int argc, char *argv[]
         ("log.mask", po::value<dbglog::mask>()
          ->default_value(dbglog::mask(dbglog::get_mask()))
          , "set dbglog logging mask")
-        ("log.file", po::value<std::string>()
-         , "set dbglog output file (non by default)")
+        ("log.file", po::value(&logFile_)
+         , "set dbglog output file (none by default)")
         ("log.console", po::value<bool>()->default_value(true)
          , "enable console logging")
         ("log.timePrecision", po::value<unsigned short>()->default_value(0)
@@ -206,6 +206,7 @@ void program::configureImpl(int argc, char *argv[]
 
     // set log file if set
     if (vm.count("log.file")) {
+        // NB: notify(vm) not called yet => logFile_ is not set!
         dbglog::log_file(vm["log.file"].as<std::string>());
     }
 

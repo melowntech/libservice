@@ -29,6 +29,8 @@ public:
     const std::string name;
     const std::string version;
 
+    std::string logFile() const { return logFile_; }
+
     int flags() const { return flags_; }
 
 protected:
@@ -64,6 +66,7 @@ private:
                        , po::options_description genericConfig);
 
     int flags_;
+    std::string logFile_;
 };
 
 } // namespace service
