@@ -5,6 +5,8 @@
 #include <fstream>
 #include <set>
 
+#include <boost/filesystem.hpp>
+
 #include "program.hpp"
 
 #ifndef BUILDSYS_HOSTNAME
@@ -30,11 +32,23 @@ program::~program()
 {
 }
 
-void program::configure(int argc, char *argv[]
-                        , const po::options_description &generic)
+po::variables_map
+program::configure(int argc, char *argv[]
+                   , const po::options_description &genericConcig)
+{
+    return configure(argc, argv
+                     , po::options_description("command line options")
+                     , genericConcig);
+
+}
+
+po::variables_map
+program::configure(int argc, char *argv[]
+                   , const po::options_description &genericCmdline
+                   , const po::options_description &genericConcig)
 {
     try {
-        configureImpl(argc, argv, generic);
+        return configureImpl(argc, argv, genericCmdline, genericConcig);
     } catch (const po::error &e) {
         std::cerr << name << ": " << e.what() << std::endl;
         throw immediate_exit(EXIT_FAILURE);
@@ -60,15 +74,16 @@ const char *EXTRA_OPTIONS = "\n";
 
 } // namespace
 
-void program::configureImpl(int argc, char *argv[]
-                            , po::options_description genericConfig)
+po::variables_map
+program::configureImpl(int argc, char *argv[]
+                       , po::options_description genericCmdline
+                       , po::options_description genericConfig)
 {
     po::options_description cmdline("");
     po::options_description config("");
     po::positional_options_description positionals;
     configuration(cmdline, config, positionals);
 
-    po::options_description genericCmdline("command line options");
     genericCmdline.add_options()
         ("help", "produce help message")
         ("version,v", "display version and terminate")
@@ -81,7 +96,7 @@ void program::configureImpl(int argc, char *argv[]
         ("log.mask", po::value<dbglog::mask>()
          ->default_value(dbglog::mask(dbglog::get_mask()))
          , "set dbglog logging mask")
-        ("log.file", po::value(&logFile_)
+        ("log.file", po::value<boost::filesystem::path>()
          , "set dbglog output file (none by default)")
         ("log.console", po::value<bool>()->default_value(true)
          , "enable console logging")
@@ -207,7 +222,8 @@ void program::configureImpl(int argc, char *argv[]
     // set log file if set
     if (vm.count("log.file")) {
         // NB: notify(vm) not called yet => logFile_ is not set!
-        dbglog::log_file(vm["log.file"].as<std::string>());
+        logFile_ = absolute(vm["log.file"].as<boost::filesystem::path>());
+        dbglog::log_file(logFile_.string());
     }
 
     // enable/disable log console if set
@@ -242,6 +258,8 @@ void program::configureImpl(int argc, char *argv[]
 
         configure(un);
     }
+
+    return vm;
 }
 
 } // namespace service

@@ -6,6 +6,7 @@
 #include <ostream>
 
 #include <boost/program_options.hpp>
+#include <boost/filesystem/path.hpp>
 #include <boost/noncopyable.hpp>
 
 #include <dbglog/dbglog.hpp>
@@ -29,7 +30,7 @@ public:
     const std::string name;
     const std::string version;
 
-    std::string logFile() const { return logFile_; }
+    boost::filesystem::path logFile() const { return logFile_; }
 
     int flags() const { return flags_; }
 
@@ -58,15 +59,23 @@ protected:
 
     dbglog::module log_;
 
-    void configure(int argc, char *argv[]
-                   , const po::options_description &genericConfig);
+    po::variables_map
+    configure(int argc, char *argv[]
+              , const po::options_description &genericConfig);
+
+    po::variables_map
+    configure(int argc, char *argv[]
+              , const po::options_description &genericCmdline
+              , const po::options_description &genericConfig);
 
 private:
-    void configureImpl(int argc, char *argv[]
-                       , po::options_description genericConfig);
+    po::variables_map
+    configureImpl(int argc, char *argv[]
+                  , po::options_description genericCmdline
+                  , po::options_description genericConfig);
 
     int flags_;
-    std::string logFile_;
+    boost::filesystem::path logFile_;
 };
 
 } // namespace service

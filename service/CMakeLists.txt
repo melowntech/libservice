@@ -1,5 +1,5 @@
 define_module(LIBRARY service
-  DEPENDS dbglog Boost_PROGRAM_OPTIONS Boost_SYSTEM)
+  DEPENDS dbglog Boost_FILESYSTEM Boost_PROGRAM_OPTIONS Boost_SYSTEM)
 
 compile_with_hostname()
 
@@ -8,6 +8,7 @@ set(service_SOURCES
     service.hpp service.cpp
     cmdline.hpp cmdline.cpp
     runable.hpp
+    pidfile.hpp pidfile.cpp
 )
 
 add_library(service STATIC ${service_SOURCES})
