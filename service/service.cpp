@@ -206,17 +206,26 @@ void switchPersona(const std::string &username
 
 int sendSignal(const fs::path &pidFile, const std::string &signal)
 {
+    int signo = 0;
+    if (signal == "stop") {
+        signo = SIGTERM;
+    } else if (signal == "logrotate") {
+        signo = SIGHUP;
+    } else if (signal == "test") {
+        signo = 0;
+    } else {
+        LOG(fatal) << "Unrecongized signal: <" << signal << ">.";
+        return EXIT_FAILURE;
+    }
+
     try {
-        if (signal == "stop") {
-            pidfile::signal(pidFile, SIGTERM);
-        } else if (signal == "logrotate") {
-            pidfile::signal(pidFile, SIGHUP);
-        } else {
-            LOG(fatal) << "Unrecongized signal: <" << signal << ">.";
-            return EXIT_FAILURE;
+        if (!pidfile::signal(pidFile, signo)) {
+            // not running -> return 1
+            return 1;
         }
     } catch (const std::exception &e) {
         LOG(fatal) << "Cannot signal running instance: <" << e.what() << ">.";
+        return EXIT_FAILURE;
     }
 
     return EXIT_SUCCESS;
@@ -251,10 +260,10 @@ int service::operator()(int argc, char *argv[])
              , "Do not leave current directory after forking to background.")
             ("daemonize-noclose"
              , "Do not close STDIN/OUT/ERR after forking to background.")
-            ("pid-file", po::value(&pidFilePath)
+            ("pidfile", po::value(&pidFilePath)
              , "Path to pid file.")
             ("signal,s", po::value(&signal)
-             , "Signal to be sent to running instance: stop, logrotate.")
+             , "Signal to be sent to running instance: stop, logrotate, test.")
             ;
 
         genericCmdline.add_options()

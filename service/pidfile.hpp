@@ -13,7 +13,10 @@ namespace service { namespace pidfile {
  */
 void allocate(const boost::filesystem::path &path);
 
-void signal(const boost::filesystem::path &path, int signal);
+/** Returns true if server was signalled, false if it is not running.
+ *  Throws std::exception if an error occurred.
+ */
+bool signal(const boost::filesystem::path &path, int signal);
 
 } } // namespace service::pidfile
 

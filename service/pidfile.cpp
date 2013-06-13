@@ -139,7 +139,7 @@ void allocate(const fs::path &path)
     file.release();
 }
 
-void signal(const fs::path &path, int signal)
+bool signal(const fs::path &path, int signal)
 {
     File file;
 
@@ -151,8 +151,7 @@ void signal(const fs::path &path, int signal)
             throw e;
         }
 
-        LOGTHROW(err2, std::runtime_error) << "Instance is not running.";
-        return;
+        return false;
     }
 
     if (!file.fdopen("r")) {
@@ -164,7 +163,7 @@ void signal(const fs::path &path, int signal)
 
     if (!lockFd(file.fd)) {
         // process is not running
-        LOGTHROW(err2, std::runtime_error) << "Instance is not running.";
+        return false;
     }
 
     pid_t pid = 0;
@@ -176,11 +175,16 @@ void signal(const fs::path &path, int signal)
     }
 
     if (-1 == ::kill(pid, signal)) {
+        if (errno == ESRCH) {
+            return false;
+        }
         std::system_error e(errno, std::system_category());
         LOG(err3) << "Cannot deliver signal to running instance: "
                   << e.code() << ", " << e.what() << ">.";
         throw e;
     }
+
+    return true;
 }
 
 } } // namespace service::pidfile
