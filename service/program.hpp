@@ -20,6 +20,11 @@ struct immediate_exit {
     int code;
 };
 
+/** Throws immediate_exit.
+ *  TODO: mark as noreturn.
+ */
+inline void immediateExit(int code) { throw immediate_exit(code); }
+
 constexpr int DISABLE_CONFIG_HELP = 0x01;
 constexpr int ENABLE_UNRECOGNIZED_OPTIONS = 0x02;
 
@@ -67,6 +72,12 @@ protected:
     configure(int argc, char *argv[]
               , const po::options_description &genericCmdline
               , const po::options_description &genericConfig);
+
+    /** Hook before notify(vars) and configure(vars) is called.  It is the right
+     *  place to execute some non-standard action (like signalling running
+     *  instance etc.) and terminate (via throwing immediate_exit).
+     */
+    virtual void preNotifyHook(const po::variables_map &vars);
 
 private:
     po::variables_map

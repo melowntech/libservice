@@ -51,11 +51,12 @@ program::configure(int argc, char *argv[]
         return configureImpl(argc, argv, genericCmdline, genericConcig);
     } catch (const po::error &e) {
         std::cerr << name << ": " << e.what() << std::endl;
-        throw immediate_exit(EXIT_FAILURE);
+        immediateExit(EXIT_FAILURE);
     } catch (const std::exception &e) {
         LOG(fatal, log_) << "Configure failed: " << e.what();
-        throw immediate_exit(EXIT_FAILURE);
+        immediateExit(EXIT_FAILURE);
     }
+    throw;
 }
 
 namespace {
@@ -73,6 +74,9 @@ std::pair<std::string, std::string> helpParser(const std::string& s)
 const char *EXTRA_OPTIONS = "\n";
 
 } // namespace
+
+// nothing to do here
+void program::preNotifyHook(const po::variables_map &) {}
 
 po::variables_map
 program::configureImpl(int argc, char *argv[]
@@ -152,7 +156,7 @@ program::configureImpl(int argc, char *argv[]
         } catch(const std::ios_base::failure &e) {
             LOG(fatal) << "Cannot read config file <" << cfg << ">: "
                        << e.what();
-            throw immediate_exit(EXIT_FAILURE);
+            immediateExit(EXIT_FAILURE);
         }
     }
 
@@ -162,7 +166,7 @@ program::configureImpl(int argc, char *argv[]
             << (" (built on " __TIMESTAMP__ " at " BUILDSYS_HOSTNAME
                 LOCAL_BUILDSYS_CUSTOMER_INFO ")")
             << std::endl;
-        throw immediate_exit(EXIT_SUCCESS);
+        immediateExit(EXIT_SUCCESS);
     }
 
     std::set<std::string> helps;
@@ -187,7 +191,7 @@ program::configureImpl(int argc, char *argv[]
 
         helps.erase("all");
         if (helps.empty()) {
-            throw immediate_exit(EXIT_SUCCESS);
+            immediateExit(EXIT_SUCCESS);
         }
         std::cout << '\n';
     } else if (vm.count("help")) {
@@ -198,7 +202,7 @@ program::configureImpl(int argc, char *argv[]
 
         std::cout << "\n" << genericCmdline << cmdline;
         if (helps.empty()) {
-            throw immediate_exit(EXIT_SUCCESS);
+            immediateExit(EXIT_SUCCESS);
         }
         std::cout << '\n';
     }
@@ -211,7 +215,7 @@ program::configureImpl(int argc, char *argv[]
             std::cout << '\n';
         }
 
-        throw immediate_exit(EXIT_SUCCESS);
+        immediateExit(EXIT_SUCCESS);
     }
 
     // update log mask if set
@@ -235,6 +239,9 @@ program::configureImpl(int argc, char *argv[]
         dbglog::log_time_precision
             (vm["log.timePrecision"].as<unsigned short>());
     }
+
+    // allow derived class to hook here before calling notify and configure.
+    preNotifyHook(vm);
 
     po::notify(vm);
 

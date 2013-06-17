@@ -233,6 +233,19 @@ int sendSignal(const fs::path &pidFile, const std::string &signal)
 
 } // namespace
 
+void service::preNotifyHook(const po::variables_map &vars)
+{
+    if (!vars.count("signal")) { return; }
+    if (!vars.count("pidfile")) {
+        LOG(fatal) << "Pid file must be specified to send signal.";
+        throw immediate_exit(EXIT_FAILURE);
+    }
+
+    // send signal and terminate
+    immediateExit(sendSignal(vars["pidfile"].as<fs::path>()
+                             , vars["signal"].as<std::string>()));
+}
+
 int service::operator()(int argc, char *argv[])
 {
     dbglog::thread_id("main");
@@ -244,7 +257,6 @@ int service::operator()(int argc, char *argv[])
     std::string username;
     std::string groupname;
     fs::path pidFilePath;
-    std::string signal;
 
     try {
         po::options_description genericCmdline("command line options");
@@ -262,7 +274,7 @@ int service::operator()(int argc, char *argv[])
              , "Do not close STDIN/OUT/ERR after forking to background.")
             ("pidfile", po::value(&pidFilePath)
              , "Path to pid file.")
-            ("signal,s", po::value(&signal)
+            ("signal,s", po::value<std::string>()
              , "Signal to be sent to running instance: stop, logrotate, test.")
             ;
 
@@ -283,18 +295,8 @@ int service::operator()(int argc, char *argv[])
                 << "Options --daemonize-nochdir and --daemonize-noclose "
                 "make sense only together with --daemonize.";
         }
-
-        if (!signal.empty() && pidFilePath.empty()) {
-            LOG(fatal) << "Pid file must be specified to send signal.";
-            return EXIT_FAILURE;
-        }
     } catch (const immediate_exit &e) {
         return e.code;
-    }
-
-    // TODO: run in some config prehook
-    if (!signal.empty()) {
-        return sendSignal(pidFilePath, signal);
     }
 
     signalHandler_.reset(new SignalHandler(log_, *this));

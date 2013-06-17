@@ -36,6 +36,8 @@ protected:
 
     virtual bool help(std::ostream &out, const std::string &what);
 
+    virtual void preNotifyHook(const po::variables_map &vars);
+
 private:
     bool daemonize_;
 
