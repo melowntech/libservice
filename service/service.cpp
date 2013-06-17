@@ -278,7 +278,7 @@ int service::operator()(int argc, char *argv[])
              , "Signal to be sent to running instance: stop, logrotate, test.")
             ;
 
-        genericCmdline.add_options()
+        genericConfig.add_options()
             ("service.user", po::value(&username)
              , "Switch process persona to given username.")
             ("service.group", po::value(&groupname)
