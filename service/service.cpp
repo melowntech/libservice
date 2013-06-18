@@ -343,7 +343,8 @@ int service::operator()(int argc, char *argv[])
 
         // go away!
         if (!daemonizeNochdir) {
-            ::chdir("/");
+            int ignore = ::chdir("/");
+            (void) ignore;
         }
 
         dbglog::log_console(false);
