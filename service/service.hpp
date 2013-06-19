@@ -22,6 +22,8 @@ public:
     void stop();
 
 protected:
+    typedef std::shared_ptr<void> Cleanup;
+
     virtual void configuration(po::options_description &cmdline
                                , po::options_description &config
                                , po::positional_options_description &pd) = 0;
@@ -30,7 +32,10 @@ protected:
 
     virtual void configure(const std::vector<std::string> &unrecognized);
 
-    virtual void start() = 0;
+    /** Returned Cleanup will be destroyed when going down. Just return pointer
+     *  to your cleanup code
+     */
+    virtual Cleanup start() = 0;
 
     virtual int run() = 0;
 

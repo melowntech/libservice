@@ -68,7 +68,7 @@ public:
         // threads calling this function
         auto value(logRotateEvent_.load());
         if (value != lastLogRotateEvent_) {
-            LOG(info3) << "Logrotate: <" << owner_.logFile() << ">.";
+            LOG(info3, log_) << "Logrotate: <" << owner_.logFile() << ">.";
             dbglog::log_file(owner_.logFile().string());
             LOG(info4, log_)
                 << "Service " << owner_.name << '-' << owner_.version
@@ -134,7 +134,9 @@ service::~service()
 {}
 
 namespace {
-void switchPersona(const std::string &username
+
+void switchPersona(dbglog::module &log
+                   , const std::string &username
                    , const std::string &groupname)
 {
     bool switchUid(false);
@@ -142,8 +144,8 @@ void switchPersona(const std::string &username
     uid_t uid(-1);
     gid_t gid(-1);
 
-    LOG(info3) << "Trying to run under " << username
-               << ":" << groupname << ".";
+    LOG(info3, log)
+        << "Trying to run under " << username << ":" << groupname << ".";
     if (!username.empty()) {
         auto pwd(::getpwnam(username.c_str()));
         if (!pwd) {
@@ -174,37 +176,42 @@ void switchPersona(const std::string &username
     // TODO: check whether we do not run under root!
 
     if (switchGid) {
-        LOG(info3) << "Switching to gid <" << gid << ">.";
+        LOG(info3, log) << "Switching to gid <" << gid << ">.";
         if (-1 == ::setgid(gid)) {
             std::system_error e(errno, std::system_category());
-            LOG(fatal) << "Cannot switch to gid <" << gid << ">: "
-                       << "<" << e.code() << ", " << e.what() << ">.";
+            LOG(fatal, log)
+                << "Cannot switch to gid <" << gid << ">: "
+                << "<" << e.code() << ", " << e.what() << ">.";
             throw e;
         }
     }
 
     if (switchUid) {
-        LOG(info3) << "Setting supplementary groups for user <"
-                   << username << ">.";
+        LOG(info3, log)
+            << "Setting supplementary groups for user <"
+            << username << ">.";
         if (-1 == ::initgroups(username.c_str(), gid)) {
             std::system_error e(errno, std::system_category());
-            LOG(fatal) << "Cannot initialize supplementary groups for user <"
-                       << username << ">: <" << e.code()
-                       << ", " << e.what() << ">.";
+            LOG(fatal, log)
+                << "Cannot initialize supplementary groups for user <"
+                << username << ">: <" << e.code()
+                << ", " << e.what() << ">.";
             throw e;
         }
 
-        LOG(info3) << "Switching to uid <" << uid << ">.";
+        LOG(info3, log) << "Switching to uid <" << uid << ">.";
         if (-1 == ::setuid(uid)) {
             std::system_error e(errno, std::system_category());
-            LOG(fatal) << "Cannot switch to uid <" << uid << ">: "
-                       << "<" << e.code() << ", " << e.what() << ">.";
+            LOG(fatal, log)
+                << "Cannot switch to uid <" << uid << ">: "
+                << "<" << e.code() << ", " << e.what() << ">.";
             throw e;
         }
     }
 }
 
-int sendSignal(const fs::path &pidFile, const std::string &signal)
+int sendSignal(dbglog::module &log, const fs::path &pidFile
+               , const std::string &signal)
 {
     int signo = 0;
     if (signal == "stop") {
@@ -214,7 +221,7 @@ int sendSignal(const fs::path &pidFile, const std::string &signal)
     } else if (signal == "test") {
         signo = 0;
     } else {
-        LOG(fatal) << "Unrecongized signal: <" << signal << ">.";
+        LOG(fatal, log) << "Unrecongized signal: <" << signal << ">.";
         return EXIT_FAILURE;
     }
 
@@ -224,7 +231,8 @@ int sendSignal(const fs::path &pidFile, const std::string &signal)
             return 1;
         }
     } catch (const std::exception &e) {
-        LOG(fatal) << "Cannot signal running instance: <" << e.what() << ">.";
+        LOG(fatal, log)
+            << "Cannot signal running instance: <" << e.what() << ">.";
         return EXIT_FAILURE;
     }
 
@@ -237,12 +245,12 @@ void service::preNotifyHook(const po::variables_map &vars)
 {
     if (!vars.count("signal")) { return; }
     if (!vars.count("pidfile")) {
-        LOG(fatal) << "Pid file must be specified to send signal.";
+        LOG(fatal, log_) << "Pid file must be specified to send signal.";
         throw immediate_exit(EXIT_FAILURE);
     }
 
     // send signal and terminate
-    immediateExit(sendSignal(vars["pidfile"].as<fs::path>()
+    immediateExit(sendSignal(log_, vars["pidfile"].as<fs::path>()
                              , vars["signal"].as<std::string>()));
 }
 
@@ -291,7 +299,7 @@ int service::operator()(int argc, char *argv[])
         daemonizeNoclose = vm.count("daemonize-noclose");
 
         if (!daemonize && (daemonizeNochdir || daemonizeNoclose)) {
-            LOG(warn4)
+            LOG(warn4, log_)
                 << "Options --daemonize-nochdir and --daemonize-noclose "
                 "make sense only together with --daemonize.";
         }
@@ -307,7 +315,7 @@ int service::operator()(int argc, char *argv[])
 
     // TODO: wait for child to settle down, use some pipe to send status
     if (daemonize) {
-        LOG(info4) << "Forking to background.";
+        LOG(info4, log_) << "Forking to background.";
         if (-1 == daemon(true, true)) {
             LOG(fatal) << "Failed to daemonize: " << errno;
             return EXIT_FAILURE;
@@ -326,36 +334,18 @@ int service::operator()(int argc, char *argv[])
     }
 
     try {
-        switchPersona(username, groupname);
+        switchPersona(log_, username, groupname);
     } catch (const std::exception &e) {
         return EXIT_FAILURE;
-    }
-
-    if (daemonize) {
-        // replace stdin/out/err with /dev/null
-        if (!daemonizeNoclose) {
-            // TODO: check errors
-            auto null(::open("/dev/null", O_RDWR));
-            ::dup2(null, STDIN_FILENO);
-            ::dup2(null, STDOUT_FILENO);
-            ::dup2(null, STDERR_FILENO);
-        }
-
-        // go away!
-        if (!daemonizeNochdir) {
-            int ignore = ::chdir("/");
-            (void) ignore;
-        }
-
-        dbglog::log_console(false);
     }
 
     int code = EXIT_SUCCESS;
     {
         SignalHandler::ScopedHandler signals(*signalHandler_);
 
+        Cleanup cleanup;
         try {
-            start();
+            cleanup = start();
         } catch (const immediate_exit &e) {
             if (daemonize) {
                 LOG(warn4, log_)
@@ -367,6 +357,29 @@ int service::operator()(int argc, char *argv[])
         if (!isRunning()) {
             LOG(info4, log_) << "Terminated during startup.";
             return EXIT_FAILURE;
+        }
+
+        if (daemonize) {
+            // replace stdin/out/err with /dev/null
+            if (!daemonizeNoclose) {
+                // TODO: check errors
+                auto null(::open("/dev/null", O_RDWR));
+                ::dup2(null, STDIN_FILENO);
+                ::dup2(null, STDOUT_FILENO);
+                ::dup2(null, STDERR_FILENO);
+            }
+
+            // go away!
+            if (!daemonizeNochdir) {
+                if (-1 == ::chdir("/")) {
+                    std::system_error e(errno, std::system_category());
+                    LOG(warn3, log_)
+                        << "Cannot cd to /: "
+                        << "<" << e.code() << ", " << e.what() << ">.";
+                }
+            }
+            // disable log here
+            dbglog::log_console(false);
         }
 
         code = run();
