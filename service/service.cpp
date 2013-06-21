@@ -62,6 +62,7 @@ public:
     /** Processes events and returns whether we should terminate.
      */
     bool process() {
+        LOG(debug) << "signal handler";
         ios_.poll();
 
         // TODO: last event should be (process-local) atomic to handle multiple
@@ -221,10 +222,12 @@ int sendSignal(dbglog::module &log, const fs::path &pidFile
     } else if (signal == "test") {
         signo = 0;
     } else {
-        LOG(fatal, log) << "Unrecongized signal: <" << signal << ">.";
+        LOG(fatal, log) << "Unrecognized signal: <" << signal << ">.";
         return EXIT_FAILURE;
     }
 
+    LOG(info1)
+        << "About to send signal <" << signal << "> to running process.";
     try {
         if (!pidfile::signal(pidFile, signo)) {
             // not running -> return 1
@@ -239,11 +242,91 @@ int sendSignal(dbglog::module &log, const fs::path &pidFile
     return EXIT_SUCCESS;
 }
 
+bool waitForChildInitialization(dbglog::module &log, runable &master, int fd)
+{
+    char buffer[1024];
+    for (;;) {
+        auto r(::read(fd, buffer, sizeof(buffer)));
+        if (-1 == r) {
+            if (EINTR == errno) {
+                if (!master.isRunning()) {
+                    LOG(warn4, log)
+                        << "Terminated during daemonization.";
+                    return false;
+                }
+            } else {
+                LOG(fatal, log)
+                    << "Failed to read pid from notifier pipe: "
+                    << errno;
+                return false;
+            }
+        }
+
+        if (!r) {
+            // process terminated, try to wait for it
+            // TODO: implement
+            return true;
+        }
+    }
+}
+
+bool daemonizeNochdir(false);
+bool daemonizeNoclose(false);
+int notifierFd(-1);
+
+void daemonizeFinish()
+{
+    // replace stdin/out/err with /dev/null
+    if (!daemonizeNoclose) {
+        // TODO: check errors
+        auto null(::open("/dev/null", O_RDWR));
+        ::dup2(null, STDIN_FILENO);
+        ::dup2(null, STDOUT_FILENO);
+        ::dup2(null, STDERR_FILENO);
+    }
+
+    // disable log here
+    dbglog::log_console(false);
+
+    // OK, signal we are ready to serve
+    if (notifierFd >= 0) {
+        // TODO: check errors
+        ::close(notifierFd);
+    }
+
+    if (-1 == ::pthread_atfork(nullptr, nullptr, nullptr)) {
+        LOG(warn4) << "Atfork deregistration failed: " << errno;
+    }
+}
+
+extern "C" {
+    void atfork(void) {
+        daemonizeFinish();
+    }
+}
+
 } // namespace
 
 void service::preNotifyHook(const po::variables_map &vars)
 {
-    if (!vars.count("signal")) { return; }
+
+    if (!vars.count("signal")) {
+        // normal startup
+        if (vars.count("pidfile")) {
+            // OK, sanity check
+            auto pid(pidfile::signal(vars["pidfile"].as<fs::path>(), 0));
+            if (pid) {
+                LOG(fatal, log_)
+                    << "Service " << identity()
+                    << " is already running with pid <" << pid << ">.";
+                throw immediate_exit(EXIT_FAILURE);
+            }
+        }
+        return;
+    }
+
+
+    // just send signal to running instance
     if (!vars.count("pidfile")) {
         LOG(fatal, log_) << "Pid file must be specified to send signal.";
         throw immediate_exit(EXIT_FAILURE);
@@ -259,8 +342,6 @@ int service::operator()(int argc, char *argv[])
     dbglog::thread_id("main");
 
     bool daemonize(false);
-    bool daemonizeNochdir(false);
-    bool daemonizeNoclose(false);
 
     std::string username;
     std::string groupname;
@@ -303,23 +384,112 @@ int service::operator()(int argc, char *argv[])
                 << "Options --daemonize-nochdir and --daemonize-noclose "
                 "make sense only together with --daemonize.";
         }
+
+        // make sure pidfile is an absolute path
+        pidFilePath = absolute(pidFilePath);
     } catch (const immediate_exit &e) {
         return e.code;
     }
 
     signalHandler_.reset(new SignalHandler(log_, *this));
 
-    LOG(info4, log_) << "Service " << name << '-' << version << " starting.";
+    LOG(info4, log_) << "Service " << identity() << " starting.";
 
     // daemonize if asked to do so
 
-    // TODO: wait for child to settle down, use some pipe to send status
+    // daemonization code
+    // NB: this piece of code must be terminated only by "_exit"
+    // returning calls destructors and bad things happen
     if (daemonize) {
         LOG(info4, log_) << "Forking to background.";
-        if (-1 == daemon(true, true)) {
-            LOG(fatal) << "Failed to daemonize: " << errno;
+
+        // go away!
+        if (!daemonizeNochdir) {
+            if (-1 == ::chdir("/")) {
+                std::system_error e(errno, std::system_category());
+                LOG(warn3, log_)
+                    << "Cannot cd to /: "
+                    << "<" << e.code() << ", " << e.what() << ">.";
+            }
+        }
+
+        int notifier1[2];
+        if (-1 == ::pipe(notifier1)) {
+            LOG(fatal, log_) << "Failed to create notifier pipe: " << errno;
+            _exit(EXIT_FAILURE);
+        }
+
+        int notifier2[2];
+        if (-1 == ::pipe(notifier2)) {
+            LOG(fatal, log_) << "Failed to create notifier pipe: "
+                             << errno;
+            _exit(EXIT_FAILURE);
+        }
+
+        auto pid(::fork());
+        if (-1 == pid) {
+            LOG(fatal, log_) << "Failed to fork: " << errno;
             return EXIT_FAILURE;
         }
+
+        if (pid) {
+            // starter process; close both notifiers
+            ::close(notifier1[1]);
+            ::close(notifier2[0]);
+            ::close(notifier2[1]);
+
+            // parent -> starting process
+            if (!waitForChildInitialization(log_, *this, notifier1[0])) {
+                LOG(fatal, log_) << "Child process failed.";
+                _exit(EXIT_FAILURE);
+            }
+
+            LOG(info4, log_)
+                << "Service " << identity() << " running at background.";
+            _exit(EXIT_SUCCESS);
+        } else {
+            // intermediate process
+
+            // child, set sid and for again
+            if (-1 == ::setsid()) {
+                LOG(fatal, log_) << "Unable to become a session leader: "
+                                 << errno;
+                _exit(EXIT_FAILURE);
+            }
+
+            pid = ::fork();
+            if (-1 == pid) {
+                LOG(fatal, log_) << "Failed secondary fork: " << errno;
+                _exit(EXIT_FAILURE);
+            }
+
+            if (pid) {
+                // OK, intermediate process; close second notifier
+                ::close(notifier2[1]);
+
+                if (!waitForChildInitialization(log_, *this, notifier2[0])) {
+                    LOG(fatal, log_) << "Child process failed.";
+                    _exit(EXIT_FAILURE);
+                }
+                _exit(EXIT_SUCCESS);
+            }
+
+            // close intermediate process notifier
+            ::close(notifier1[0]);
+            ::close(notifier1[1]);
+            ::close(notifier2[0]);
+
+            // we are in the daemonized process
+            notifierFd = notifier2[1];
+
+            // we want to close notifier when something forks
+            if (-1 == ::pthread_atfork(nullptr, nullptr, &atfork)) {
+                LOG(fatal, log_)
+                    << "Atfork registration failed: " << errno;
+                _exit(EXIT_FAILURE);
+            }
+        }
+
         LOG(info4, log_) << "Running in background.";
     }
 
@@ -360,26 +530,7 @@ int service::operator()(int argc, char *argv[])
         }
 
         if (daemonize) {
-            // replace stdin/out/err with /dev/null
-            if (!daemonizeNoclose) {
-                // TODO: check errors
-                auto null(::open("/dev/null", O_RDWR));
-                ::dup2(null, STDIN_FILENO);
-                ::dup2(null, STDOUT_FILENO);
-                ::dup2(null, STDERR_FILENO);
-            }
-
-            // go away!
-            if (!daemonizeNochdir) {
-                if (-1 == ::chdir("/")) {
-                    std::system_error e(errno, std::system_category());
-                    LOG(warn3, log_)
-                        << "Cannot cd to /: "
-                        << "<" << e.code() << ", " << e.what() << ">.";
-                }
-            }
-            // disable log here
-            dbglog::log_console(false);
+            daemonizeFinish();
         }
 
         code = run();

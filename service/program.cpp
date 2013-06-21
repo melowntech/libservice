@@ -32,6 +32,8 @@ program::~program()
 {
 }
 
+std::string program::identity() const { return name + "-" + version; }
+
 po::variables_map
 program::configure(int argc, char *argv[]
                    , const po::options_description &genericConcig)

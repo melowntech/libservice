@@ -32,6 +32,8 @@ class program : boost::noncopyable {
 public:
     virtual ~program();
 
+    std::string identity() const;
+
     const std::string name;
     const std::string version;
 

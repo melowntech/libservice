@@ -65,21 +65,21 @@ void allocate(const fs::path &path)
     if (file.fd == -1) {
         if (errno != EEXIST) {
             std::system_error e(errno, std::system_category());
-            LOG(err3) << "Cannot open pid file " << path << ": "
+            LOG(err3) << "Cannot open pid file " << path << ": <"
                       << e.code() << ", " << e.what() << ">.";
             throw e;
         }
 
         if ((file.fd = ::open(path.string().c_str(), O_RDWR)) < 0) {
             std::system_error e(errno, std::system_category());
-            LOG(err3) << "Cannot open pid file " << path << ": "
+            LOG(err3) << "Cannot open pid file " << path << ": <"
                       << e.code() << ", " << e.what() << ">.";
             throw e;
         }
 
         if (!file.fdopen("rw")) {
             std::system_error e(errno, std::system_category());
-            LOG(err3) << "Cannot open pid file " << path << " for reading: "
+            LOG(err3) << "Cannot open pid file " << path << " for reading: <"
                       << e.code() << ", " << e.what() << ">.";
             throw e;
         }
@@ -110,7 +110,7 @@ void allocate(const fs::path &path)
         if (file.fd == -1) {
             std::system_error e(errno, std::system_category());
             LOG(err3) << "Cannot open pid file " << path
-                      << " the second time round: "
+                      << " the second time round: <"
                       << e.code() << ", " << e.what() << ">.";
             throw e;
         }
@@ -118,14 +118,14 @@ void allocate(const fs::path &path)
 
     if (-1 == lockFd(file.fd)) {
         std::system_error e(errno, std::system_category());
-        LOG(err3) << "Cannot lock pid file " << path << ": "
+        LOG(err3) << "Cannot lock pid file " << path << ": <"
                   << e.code() << ", " << e.what() << ">.";
         throw e;
     }
 
     if (!file.fdopen("w")) {
         std::system_error e(errno, std::system_category());
-        LOG(err3) << "Oops, fdopen on pid file  " << path << " failed: "
+        LOG(err3) << "Oops, fdopen on pid file  " << path << " failed: <"
                   << e.code() << ", " << e.what() << ">.";
         throw e;
     }
@@ -139,52 +139,52 @@ void allocate(const fs::path &path)
     file.release();
 }
 
-bool signal(const fs::path &path, int signal)
+unsigned long signal(const fs::path &path, int signal)
 {
     File file;
 
     if ((file.fd = ::open(path.string().c_str(), O_RDONLY)) < 0) {
         if (errno != ENOENT) {
             std::system_error e(errno, std::system_category());
-            LOG(err3) << "Cannot open pid file " << path << ": "
+            LOG(err3) << "Cannot open pid file " << path << ": <"
                       << e.code() << ", " << e.what() << ">.";
             throw e;
         }
 
-        return false;
+        return 0;
     }
 
     if (!file.fdopen("r")) {
         std::system_error e(errno, std::system_category());
-        LOG(err3) << "Cannot open pid file " << path << " for reading: "
+        LOG(err3) << "Cannot open pid file " << path << " for reading: <"
                   << e.code() << ", " << e.what() << ">.";
         throw e;
     }
 
     if (!lockFd(file.fd)) {
         // process is not running
-        return false;
+        return 0;
     }
 
     pid_t pid = 0;
     if (std::fscanf(file.fp, "%d", &pid) != 1) {
         std::system_error e(errno, std::system_category());
-        LOG(err3) << "Cannot parse pid " << path << " for reading: "
+        LOG(err3) << "Cannot parse pid " << path << " for reading: <"
                       << e.code() << ", " << e.what() << ">.";
         throw e;
     }
 
     if (-1 == ::kill(pid, signal)) {
         if (errno == ESRCH) {
-            return false;
+            return 0;
         }
         std::system_error e(errno, std::system_category());
-        LOG(err3) << "Cannot deliver signal to running instance: "
+        LOG(err3) << "Cannot deliver signal to running instance: <"
                   << e.code() << ", " << e.what() << ">.";
         throw e;
     }
 
-    return true;
+    return pid;
 }
 
 } } // namespace service::pidfile
