@@ -1,5 +1,7 @@
 define_module(LIBRARY service
-  DEPENDS dbglog Boost_FILESYSTEM Boost_PROGRAM_OPTIONS Boost_SYSTEM)
+  DEPENDS dbglog Boost_FILESYSTEM Boost_PROGRAM_OPTIONS Boost_SYSTEM
+  # we need pthread_* stuff
+  THREADS)
 
 compile_with_hostname()
 
