@@ -386,7 +386,9 @@ int service::operator()(int argc, char *argv[])
         }
 
         // make sure pidfile is an absolute path
-        pidFilePath = absolute(pidFilePath);
+        if (!pidFilePath.empty()) {
+            pidFilePath = absolute(pidFilePath);
+        }
     } catch (const immediate_exit &e) {
         return e.code;
     }
