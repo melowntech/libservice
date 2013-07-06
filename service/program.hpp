@@ -75,11 +75,13 @@ protected:
               , const po::options_description &genericCmdline
               , const po::options_description &genericConfig);
 
-    /** Hook before notify(vars) and configure(vars) is called.  It is the right
-     *  place to execute some non-standard action (like signalling running
-     *  instance etc.) and terminate (via throwing immediate_exit).
+    /** Hook before parsing config file.
      */
     virtual void preNotifyHook(const po::variables_map &vars);
+
+    /** Hook before notify(vars) and configure(vars) is called.
+     */
+    virtual void preConfigHook(const po::variables_map &vars);
 
 private:
     po::variables_map

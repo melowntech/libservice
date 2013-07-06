@@ -80,6 +80,9 @@ const char *EXTRA_OPTIONS = "\n";
 // nothing to do here
 void program::preNotifyHook(const po::variables_map &) {}
 
+// nothing to do here
+void program::preConfigHook(const po::variables_map &) {}
+
 po::variables_map
 program::configureImpl(int argc, char *argv[]
                        , po::options_description genericCmdline
@@ -141,27 +144,6 @@ program::configureImpl(int argc, char *argv[]
     po::variables_map vm;
     po::store(parsed, vm);
 
-    if (vm.count("config")) {
-        const std::string cfg(vm["config"].as<std::string>());
-        po::options_description configs(name);
-        configs.add(genericConfig).add(config);
-
-        std::ifstream f;
-        f.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-        try {
-            f.open(cfg.c_str());
-            f.exceptions(std::ifstream::badbit);
-            store(po::parse_config_file(f, configs), vm);
-            f.close();
-
-            LOG(info3) << "Loaded configuration from <" << cfg << ">.";
-        } catch(const std::ios_base::failure &e) {
-            LOG(fatal) << "Cannot read config file <" << cfg << ">: "
-                       << e.what();
-            immediateExit(EXIT_FAILURE);
-        }
-    }
-
     if (vm.count("version")) {
         std::cout
             << name << ' ' << version
@@ -218,6 +200,30 @@ program::configureImpl(int argc, char *argv[]
         }
 
         immediateExit(EXIT_SUCCESS);
+    }
+
+    // allow derived class to hook here before calling notify and configure.
+    preConfigHook(vm);
+
+    if (vm.count("config")) {
+        const std::string cfg(vm["config"].as<std::string>());
+        po::options_description configs(name);
+        configs.add(genericConfig).add(config);
+
+        std::ifstream f;
+        f.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+        try {
+            f.open(cfg.c_str());
+            f.exceptions(std::ifstream::badbit);
+            store(po::parse_config_file(f, configs), vm);
+            f.close();
+
+            LOG(info3) << "Loaded configuration from <" << cfg << ">.";
+        } catch(const std::ios_base::failure &e) {
+            LOG(fatal) << "Cannot read config file <" << cfg << ">: "
+                       << e.what();
+            immediateExit(EXIT_FAILURE);
+        }
     }
 
     // update log mask if set

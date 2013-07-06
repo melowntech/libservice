@@ -307,9 +307,8 @@ extern "C" {
 
 } // namespace
 
-void service::preNotifyHook(const po::variables_map &vars)
+void service::preConfigHook(const po::variables_map &vars)
 {
-
     if (!vars.count("signal")) {
         // normal startup
         if (vars.count("pidfile")) {
