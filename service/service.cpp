@@ -281,8 +281,12 @@ void daemonizeFinish()
         // TODO: check errors
         auto null(::open("/dev/null", O_RDWR));
         ::dup2(null, STDIN_FILENO);
-        ::dup2(null, STDOUT_FILENO);
-        ::dup2(null, STDERR_FILENO);
+
+        // tie STDOUT_FILENO and STDERR_FILENO to log instead!
+        // ::dup2(null, STDOUT_FILENO);
+        // ::dup2(null, STDERR_FILENO);
+        dbglog::tie(STDOUT_FILENO);
+        dbglog::tie(STDERR_FILENO);
     }
 
     // disable log here
