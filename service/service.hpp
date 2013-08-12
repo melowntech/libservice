@@ -43,6 +43,14 @@ protected:
 
     virtual void preConfigHook(const po::variables_map &vars);
 
+    /** Code that will be run under original persona before persona is switched.
+     */
+    virtual void prePersonaSwitch() {}
+
+    /** Code that will be run under new persona after persona is switched.
+     */
+    virtual void postPersonaSwitch() {}
+
 private:
     bool daemonize_;
 

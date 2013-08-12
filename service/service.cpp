@@ -508,11 +508,13 @@ int service::operator()(int argc, char *argv[])
         }
     }
 
+    prePersonaSwitch();
     try {
         switchPersona(log_, username, groupname);
     } catch (const std::exception &e) {
         return EXIT_FAILURE;
     }
+    postPersonaSwitch();
 
     int code = EXIT_SUCCESS;
     {
