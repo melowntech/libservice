@@ -1,5 +1,5 @@
 define_module(LIBRARY service
-  DEPENDS dbglog Boost_FILESYSTEM Boost_PROGRAM_OPTIONS Boost_SYSTEM
+  DEPENDS utility dbglog Boost_FILESYSTEM Boost_PROGRAM_OPTIONS Boost_SYSTEM
   # we need pthread_* stuff
   THREADS)
 
@@ -9,7 +9,6 @@ set(service_SOURCES
     program.hpp program.cpp
     service.hpp service.cpp
     cmdline.hpp cmdline.cpp
-    runable.hpp
     pidfile.hpp pidfile.cpp
 )
 

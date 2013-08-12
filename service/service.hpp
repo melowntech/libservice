@@ -3,12 +3,13 @@
 
 #include <memory>
 
+#include "utility/runable.hpp"
+
 #include "program.hpp"
-#include "runable.hpp"
 
 namespace service {
 
-class service : protected program, public runable {
+class service : protected program, public utility::Runable {
 public:
     service(const std::string &name, const std::string &version
             , int flags = 0x0);

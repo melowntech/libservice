@@ -25,10 +25,6 @@ namespace bi = boost::interprocess;
 
 namespace service {
 
-runable::~runable()
-{
-}
-
 namespace {
     inline void* getAddress(bi::mapped_region &mem, std::size_t offset = 0)
     {
@@ -242,7 +238,8 @@ int sendSignal(dbglog::module &log, const fs::path &pidFile
     return EXIT_SUCCESS;
 }
 
-bool waitForChildInitialization(dbglog::module &log, runable &master, int fd)
+bool waitForChildInitialization(dbglog::module &log, utility::Runable &master
+                                , int fd)
 {
     char buffer[1024];
     for (;;) {
