@@ -534,8 +534,8 @@ int service::operator()(int argc, char *argv[])
             cleanup = start();
         } catch (const immediate_exit &e) {
             if (daemonize) {
-                LOG(warn4, log_)
-                    << "Startup exists with exist status: " << e.code << ".";
+                LOG(fatal, log_)
+                    << "Startup exits with exit status: " << e.code << ".";
             }
             return e.code;
         }
