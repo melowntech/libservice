@@ -3,6 +3,7 @@
 #include <atomic>
 #include <system_error>
 #include <signal.h>
+#include <string.h>
 
 #include <sys/types.h>
 #include <unistd.h>
@@ -95,12 +96,23 @@ private:
             start();
         }
 
+        // ignore signal '0'
+        if (!signo) {
+            start();
+            return;
+        }
+
+        auto signame(::strsignal(signo));
+
         LOG(debug, log_)
-            << "SignalHandler received signal: <" << signo << ">.";
+            << "SignalHandler received signal: <" << signo
+            << ", " << signame << ">.";
         switch (signo) {
         case SIGTERM:
         case SIGINT:
-            LOG(info2, log_) << "Terminate signal: <" << signo << ">.";
+            LOG(info2, log_)
+                << "Terminate signal: <" << signo
+                << ", " << signame << ">.";
             terminated_ = true;
             break;
 
