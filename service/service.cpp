@@ -182,6 +182,9 @@ void switchPersona(dbglog::module &log
         switchGid = true;
     }
 
+    // change log file owner to uid/gid before persona change
+    dbglog::log_file_owner(uid, gid);
+
     // TODO: check whether we do not run under root!
 
     if (switchGid) {
