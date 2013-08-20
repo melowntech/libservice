@@ -59,7 +59,6 @@ public:
     /** Processes events and returns whether we should terminate.
      */
     bool process() {
-        LOG(debug) << "signal handler";
         ios_.poll();
 
         // TODO: last event should be (process-local) atomic to handle multiple
