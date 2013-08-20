@@ -252,7 +252,7 @@ int sendSignal(dbglog::module &log, const fs::path &pidFile
     return EXIT_SUCCESS;
 }
 
-bool waitForChildInitialization(dbglog::module &log, utility::Runable &master
+bool waitForChildInitialization(dbglog::module &log, utility::Runnable &master
                                 , int fd)
 {
     char buffer[1024];
