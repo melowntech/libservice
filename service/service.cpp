@@ -152,6 +152,7 @@ void switchPersona(dbglog::module &log
     uid_t uid(-1);
     gid_t gid(-1);
 
+    if (username.empty() && groupname.empty()) { return; }
     LOG(info3, log)
         << "Trying to run under " << username << ":" << groupname << ".";
     if (!username.empty()) {
@@ -219,6 +220,9 @@ void switchPersona(dbglog::module &log
             throw e;
         }
     }
+
+    LOG(info3, log)
+        << "Run under " << username << ":" << groupname << ".";
 }
 
 int sendSignal(dbglog::module &log, const fs::path &pidFile
