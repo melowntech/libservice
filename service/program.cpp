@@ -96,7 +96,7 @@ program::configureImpl(int argc, char *argv[]
     genericCmdline.add_options()
         ("help", "produce help message")
         ("version,v", "display version and terminate")
-        ("config,f", po::value<std::string>()
+        ("config,f", po::value<std::vector<std::string> >()
          , "path to configuration file")
         ("help-all", "show help for both command line and config file")
         ;
@@ -206,23 +206,25 @@ program::configureImpl(int argc, char *argv[]
     preConfigHook(vm);
 
     if (vm.count("config")) {
-        const std::string cfg(vm["config"].as<std::string>());
+        const auto &cfgs(vm["config"].as<std::vector<std::string> >());
         po::options_description configs(name);
         configs.add(genericConfig).add(config);
 
-        std::ifstream f;
-        f.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-        try {
-            f.open(cfg.c_str());
-            f.exceptions(std::ifstream::badbit);
-            store(po::parse_config_file(f, configs), vm);
-            f.close();
+        for (const auto &cfg : cfgs) {
+            std::ifstream f;
+            f.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+            try {
+                f.open(cfg.c_str());
+                f.exceptions(std::ifstream::badbit);
+                store(po::parse_config_file(f, configs), vm);
+                f.close();
 
-            LOG(info3) << "Loaded configuration from <" << cfg << ">.";
-        } catch(const std::ios_base::failure &e) {
-            LOG(fatal) << "Cannot read config file <" << cfg << ">: "
-                       << e.what();
-            immediateExit(EXIT_FAILURE);
+                LOG(info3) << "Loaded configuration from <" << cfg << ">.";
+            } catch(const std::ios_base::failure &e) {
+                LOG(fatal) << "Cannot read config file <" << cfg << ">: "
+                           << e.what();
+                immediateExit(EXIT_FAILURE);
+            }
         }
     }
 
