@@ -97,7 +97,8 @@ program::configureImpl(int argc, char *argv[]
         ("help", "produce help message")
         ("version,v", "display version and terminate")
         ("config,f", po::value<std::vector<std::string> >()
-         , "path to configuration file")
+         , "path to configuration file; when using multiple config files "
+         "first occurrence of option wins")
         ("help-all", "show help for both command line and config file")
         ;
 
