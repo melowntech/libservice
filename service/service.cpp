@@ -35,7 +35,7 @@ namespace {
 
 struct service::SignalHandler : boost::noncopyable {
 public:
-    SignalHandler(dbglog::module &log, const program &owner)
+    SignalHandler(dbglog::module &log, service &owner, pid_t mainPid)
         : signals_(ios_, SIGTERM, SIGINT, SIGHUP)
         , mem_(bi::anonymous_shared_memory(1024))
         , terminated_(* new (getAddress(mem_)) std::atomic_bool(false))
@@ -43,8 +43,13 @@ public:
         , logRotateEvent_(* new (getAddress(mem_, sizeof(std::atomic_bool)))
                           std::atomic<std::uint64_t>(0))
         , lastLogRotateEvent_(0)
-        , log_(log), owner_(owner)
+        , statEvent_(* new (getAddress(mem_, sizeof(std::atomic_bool)
+                                       +sizeof(std::atomic<std::uint64_t>)))
+                     std::atomic<std::uint64_t>(0))
+        , lastStatEvent_(0)
+        , log_(log), owner_(owner), mainPid_(mainPid)
     {
+        signals_.add(SIGUSR1);
     }
 
     struct ScopedHandler {
@@ -63,14 +68,28 @@ public:
 
         // TODO: last event should be (process-local) atomic to handle multiple
         // threads calling this function
-        auto value(logRotateEvent_.load());
-        if (value != lastLogRotateEvent_) {
-            LOG(info3, log_) << "Logrotate: <" << owner_.logFile() << ">.";
-            dbglog::log_file(owner_.logFile().string());
-            LOG(info4, log_)
-                << "Service " << owner_.name << '-' << owner_.version
-                << ": log rotated.";
-            lastLogRotateEvent_ = value;
+
+        // check for logrotate request
+        {
+            auto value(logRotateEvent_.load());
+            if (value != lastLogRotateEvent_) {
+                LOG(info3, log_) << "Logrotate: <" << owner_.logFile() << ">.";
+                dbglog::log_file(owner_.logFile().string());
+                LOG(info4, log_)
+                    << "Service " << owner_.name << '-' << owner_.version
+                    << ": log rotated.";
+                lastLogRotateEvent_ = value;
+            }
+        }
+
+        // check for statistics request
+        {
+            auto value(statEvent_.load());
+            if ((value != lastStatEvent_) && (::getpid() == mainPid_)) {
+                // statistics are processed only in main process
+                owner_.stat();
+                lastStatEvent_ = value;
+            }
         }
 
         return terminated_;
@@ -119,6 +138,11 @@ private:
             // mark logrotate
             ++logRotateEvent_;
             break;
+
+        case SIGUSR1:
+            // mark statistics request
+            ++statEvent_;
+            break;
         }
         start();
     }
@@ -129,8 +153,11 @@ private:
     std::atomic_bool &terminated_;
     std::atomic<std::uint64_t> &logRotateEvent_;
     std::uint64_t lastLogRotateEvent_;
+    std::atomic<std::uint64_t> &statEvent_;
+    std::uint64_t lastStatEvent_;
     dbglog::module &log_;
-    const program &owner_;
+    service &owner_;
+    pid_t mainPid_;
 };
 
 service::service(const std::string &name, const std::string &version
@@ -235,6 +262,8 @@ int sendSignal(dbglog::module &log, const fs::path &pidFile
         signo = SIGHUP;
     } else if (signal == "test") {
         signo = 0;
+    } else if (signal == "stat") {
+        signo = SIGUSR1;
     } else {
         LOG(fatal, log) << "Unrecognized signal: <" << signal << ">.";
         return EXIT_FAILURE;
@@ -411,8 +440,6 @@ int service::operator()(int argc, char *argv[])
         return e.code;
     }
 
-    signalHandler_.reset(new SignalHandler(log_, *this));
-
     LOG(info4, log_) << "Service " << identity() << " starting.";
 
     // daemonize if asked to do so
@@ -531,8 +558,12 @@ int service::operator()(int argc, char *argv[])
     }
     postPersonaSwitch();
 
+    // start signal handler in main process
+    signalHandler_.reset(new SignalHandler(log_, *this, ::getpid()));
+
     int code = EXIT_SUCCESS;
     {
+
         SignalHandler::ScopedHandler signals(*signalHandler_);
 
         Cleanup cleanup;

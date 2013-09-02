@@ -22,6 +22,10 @@ public:
 
     void stop();
 
+    /** Show service statistics. Called on SIGUSR1.
+     */
+    virtual void stat() {}
+
 protected:
     typedef std::shared_ptr<void> Cleanup;
 
