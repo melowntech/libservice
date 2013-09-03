@@ -33,6 +33,7 @@ public:
     virtual ~program();
 
     std::string identity() const;
+    std::string versionInfo() const;
 
     const std::string name;
     const std::string version;

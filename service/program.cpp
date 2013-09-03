@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <set>
 
 #include <boost/filesystem.hpp>
@@ -33,6 +34,15 @@ program::~program()
 }
 
 std::string program::identity() const { return name + "-" + version; }
+
+std::string program::versionInfo() const
+{
+    std::ostringstream os;
+    os << name << ' ' << version
+       << (" (built on " __TIMESTAMP__ " at " BUILDSYS_HOSTNAME
+           LOCAL_BUILDSYS_CUSTOMER_INFO ")");
+    return os.str();
+}
 
 po::variables_map
 program::configure(int argc, char *argv[]
@@ -146,11 +156,7 @@ program::configureImpl(int argc, char *argv[]
     po::store(parsed, vm);
 
     if (vm.count("version")) {
-        std::cout
-            << name << ' ' << version
-            << (" (built on " __TIMESTAMP__ " at " BUILDSYS_HOSTNAME
-                LOCAL_BUILDSYS_CUSTOMER_INFO ")")
-            << std::endl;
+        std::cout << versionInfo() << std::endl;
         immediateExit(EXIT_SUCCESS);
     }
 
