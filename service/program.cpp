@@ -39,7 +39,7 @@ std::string program::versionInfo() const
 {
     std::ostringstream os;
     os << name << ' ' << version
-       << (" (built on " __TIMESTAMP__ " at " BUILDSYS_HOSTNAME
+       << (" (built on " __DATE__ " " __TIME__ " at " BUILDSYS_HOSTNAME
            LOCAL_BUILDSYS_CUSTOMER_INFO ")");
     return os.str();
 }
