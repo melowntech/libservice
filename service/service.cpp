@@ -63,8 +63,8 @@ namespace {
             for (auto &p : *this) { p = 0; }
         }
 
-        bool add() {
-            auto pid(::getpid());
+        bool add(::pid_t pid) {
+            if (!pid) { pid = ::getpid(); }
             if (find(pid)) { return true; }
             for (auto &p : *this) {
                 if (!p) { p = pid; return true; }
@@ -73,8 +73,9 @@ namespace {
             return false;
         }
 
-        void remove() {
-            auto p(find(::getpid()));
+        void remove(::pid_t pid) {
+            if (!pid) { pid = ::getpid(); }
+            auto p(find(pid));
             if (p) { p = 0; }
         }
 
@@ -162,11 +163,11 @@ public:
         return terminated_ || thisTerminated_;
     }
 
-    void globalTerminate(bool value) {
+    void globalTerminate(bool value, ::pid_t pid) {
         if (value) {
-            terminator_.add();
+            terminator_.add(pid);
         } else {
-            terminator_.remove();
+            terminator_.remove(pid);
         }
     }
 
@@ -698,9 +699,9 @@ bool service::isRunning() {
     return !signalHandler_->process();
 }
 
-void service::globalTerminate(bool value)
+void service::globalTerminate(bool value, long pid)
 {
-    signalHandler_->globalTerminate(value);
+    signalHandler_->globalTerminate(value, pid);
 }
 
 void service::configure(const std::vector<std::string> &)

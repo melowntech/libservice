@@ -30,7 +30,7 @@ public:
      *  terminate flag on terminate signal. All other processes handle terminate
      *  signal locally.
      */
-    void globalTerminate(bool value = true);
+    void globalTerminate(bool value = true, long pid = 0);
 
 protected:
     typedef std::shared_ptr<void> Cleanup;
