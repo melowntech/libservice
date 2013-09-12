@@ -16,6 +16,8 @@
 #include <boost/utility/in_place_factory.hpp>
 
 #include <boost/interprocess/anonymous_shared_memory.hpp>
+#include <boost/interprocess/sync/interprocess_mutex.hpp>
+#include <boost/interprocess/sync/scoped_lock.hpp>
 
 #include "service.hpp"
 #include "pidfile.hpp"
@@ -27,15 +29,10 @@ namespace bi = boost::interprocess;
 namespace service {
 
 namespace {
-    inline void* getAddress(bi::mapped_region &mem, std::size_t offset = 0)
-    {
-        return static_cast<char*>(mem.get_address()) + offset;
-    }
-
     class Allocator : boost::noncopyable {
     public:
         Allocator(std::size_t size)
-            : mem_(bi::anonymous_shared_memory(1024))
+            : mem_(bi::anonymous_shared_memory(size))
             , size_(size), offset_()
         {}
 
@@ -57,13 +54,15 @@ namespace {
     class Terminator : boost::noncopyable {
     public:
         Terminator(Allocator &mem, std::size_t size)
-            : pids_(mem.get< ::pid_t>(size)), size_(size)
+            : lock_(*new (mem.get<LockType>()) LockType())
+            , pids_(mem.get< ::pid_t>(size)), size_(size)
         {
             // reset all slots
             for (auto &p : *this) { p = 0; }
         }
 
         bool add(::pid_t pid) {
+            ScopedLock guard(lock_);
             if (!pid) { pid = ::getpid(); }
             if (find(pid)) { return true; }
             for (auto &p : *this) {
@@ -74,12 +73,14 @@ namespace {
         }
 
         void remove(::pid_t pid) {
+            ScopedLock guard(lock_);
             if (!pid) { pid = ::getpid(); }
             auto p(find(pid));
             if (p) { p = 0; }
         }
 
         bool find() {
+            ScopedLock guard(lock_);
             return find(::getpid());
         }
 
@@ -93,6 +94,10 @@ namespace {
             }
             return nullptr;
         }
+
+        typedef bi::interprocess_mutex LockType;
+        typedef bi::scoped_lock<LockType> ScopedLock;
+        LockType &lock_;
 
         ::pid_t *pids_;
         std::size_t size_;
@@ -108,7 +113,6 @@ public:
         , terminated_(* new (mem_.get<std::atomic_bool>())
                       std::atomic_bool(false))
         , thisTerminated_(false)
-          // TODO: what about alignment?
         , logRotateEvent_(* new (mem_.get<std::atomic<std::uint64_t> >())
                           std::atomic<std::uint64_t>(0))
         , lastLogRotateEvent_(0)
