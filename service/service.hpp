@@ -26,6 +26,12 @@ public:
      */
     virtual void stat() {}
 
+    /** Adds/removes this process to list of processes that are mark global
+     *  terminate flag on terminate signal. All other processes handle terminate
+     *  signal locally.
+     */
+    void globalTerminate(bool value = true);
+
 protected:
     typedef std::shared_ptr<void> Cleanup;
 

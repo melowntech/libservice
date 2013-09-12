@@ -31,20 +31,87 @@ namespace {
     {
         return static_cast<char*>(mem.get_address()) + offset;
     }
+
+    class Allocator : boost::noncopyable {
+    public:
+        Allocator(std::size_t size)
+            : mem_(bi::anonymous_shared_memory(1024))
+            , size_(size), offset_()
+        {}
+
+        template <typename T>
+        T* get(std::size_t count = 1)
+        {
+            // TODO: check size
+            auto data(static_cast<char*>(mem_.get_address()) + offset_);
+            offset_ += sizeof(T) * count;
+            return reinterpret_cast<T*>(data);
+        }
+
+    private:
+        bi::mapped_region mem_;
+        std::size_t size_;
+        std::size_t offset_;
+    };
+
+    class Terminator : boost::noncopyable {
+    public:
+        Terminator(Allocator &mem, std::size_t size)
+            : pids_(mem.get< ::pid_t>(size)), size_(size)
+        {
+            // reset all slots
+            for (auto &p : *this) { p = 0; }
+        }
+
+        bool add() {
+            auto pid(::getpid());
+            if (find(pid)) { return true; }
+            for (auto &p : *this) {
+                if (!p) { p = pid; return true; }
+            }
+            // cannot add
+            return false;
+        }
+
+        void remove() {
+            auto p(find(::getpid()));
+            if (p) { p = 0; }
+        }
+
+        bool find() {
+            return find(::getpid());
+        }
+
+        ::pid_t* begin() { return pids_; }
+        ::pid_t* end() { return pids_ + size_; }
+
+    private:
+        ::pid_t* find(::pid_t pid) {
+            for (auto &p : *this) {
+                if (p == pid) { return &p; }
+            }
+            return nullptr;
+        }
+
+        ::pid_t *pids_;
+        std::size_t size_;
+    };
 }
 
 struct service::SignalHandler : boost::noncopyable {
 public:
     SignalHandler(dbglog::module &log, service &owner, pid_t mainPid)
         : signals_(ios_, SIGTERM, SIGINT, SIGHUP)
-        , mem_(bi::anonymous_shared_memory(1024))
-        , terminated_(* new (getAddress(mem_)) std::atomic_bool(false))
+        , mem_(4096)
+        , terminator_(mem_, 32)
+        , terminated_(* new (mem_.get<std::atomic_bool>())
+                      std::atomic_bool(false))
+        , thisTerminated_(false)
           // TODO: what about alignment?
-        , logRotateEvent_(* new (getAddress(mem_, sizeof(std::atomic_bool)))
+        , logRotateEvent_(* new (mem_.get<std::atomic<std::uint64_t> >())
                           std::atomic<std::uint64_t>(0))
         , lastLogRotateEvent_(0)
-        , statEvent_(* new (getAddress(mem_, sizeof(std::atomic_bool)
-                                       +sizeof(std::atomic<std::uint64_t>)))
+        , statEvent_(* new (mem_.get<std::atomic<std::uint64_t> >())
                      std::atomic<std::uint64_t>(0))
         , lastStatEvent_(0)
         , log_(log), owner_(owner), mainPid_(mainPid)
@@ -92,7 +159,15 @@ public:
             }
         }
 
-        return terminated_;
+        return terminated_ || thisTerminated_;
+    }
+
+    void globalTerminate(bool value) {
+        if (value) {
+            terminator_.add();
+        } else {
+            terminator_.remove();
+        }
     }
 
 private:
@@ -129,9 +204,8 @@ private:
         case SIGTERM:
         case SIGINT:
             LOG(info2, log_)
-                << "Terminate signal: <" << signo
-                << ", " << signame << ">.";
-            terminated_ = true;
+                << "Terminate signal: <" << signo << ", " << signame << ">.";
+            markTerminated();
             break;
 
         case SIGHUP:
@@ -147,10 +221,24 @@ private:
         start();
     }
 
+    void markTerminated() {
+        thisTerminated_ = true;
+
+        // check for global termination
+        if (terminator_.find()) {
+            LOG(info1) << "Global terminate.";
+            terminated_ = true;
+        } else {
+            LOG(info1) << "Local terminate.";
+        }
+    }
+
     asio::io_service ios_;
     asio::signal_set signals_;
-    bi::mapped_region mem_;
+    Allocator mem_;
+    Terminator terminator_;
     std::atomic_bool &terminated_;
+    std::atomic_bool thisTerminated_;
     std::atomic<std::uint64_t> &logRotateEvent_;
     std::uint64_t lastLogRotateEvent_;
     std::atomic<std::uint64_t> &statEvent_;
@@ -446,7 +534,7 @@ int service::operator()(int argc, char *argv[])
 
     // daemonization code
     // NB: this piece of code must be terminated only by "_exit"
-    // returning calls destructors and bad things happen
+    // returning or calling exit() calls destructors and bad things happen!
     if (daemonize) {
         LOG(info4, log_) << "Forking to background.";
 
@@ -561,6 +649,9 @@ int service::operator()(int argc, char *argv[])
     // start signal handler in main process
     signalHandler_.reset(new SignalHandler(log_, *this, ::getpid()));
 
+    // we are the one that terminates whole daemon!
+    globalTerminate(true);
+
     int code = EXIT_SUCCESS;
     {
 
@@ -605,6 +696,11 @@ void service::stop()
 
 bool service::isRunning() {
     return !signalHandler_->process();
+}
+
+void service::globalTerminate(bool value)
+{
+    signalHandler_->globalTerminate(value);
 }
 
 void service::configure(const std::vector<std::string> &)
