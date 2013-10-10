@@ -39,7 +39,7 @@ void cmdline::configure(const std::vector<std::string> &)
          "although it is not processing them. Go fix your program.");
 }
 
-inline bool cmdline::help(std::ostream &, const std::string &)
+inline bool cmdline::help(std::ostream &, const std::string &) const
 {
     return false;
 }

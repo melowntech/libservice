@@ -25,7 +25,7 @@ protected:
 
     virtual int run() = 0;
 
-    virtual bool help(std::ostream &out, const std::string &what);
+    virtual bool help(std::ostream &out, const std::string &what) const;
 };
 
 } // namespace service
