@@ -263,10 +263,11 @@ service::~service()
 
 namespace {
 
-void switchPersona(dbglog::module &log
-                   , const std::string &username
-                   , const std::string &groupname)
+void switchPersona(dbglog::module &log, const service::Config &config)
 {
+    const auto &username(config.username);
+    const auto &groupname(config.groupname);
+
     bool switchUid(false);
     bool switchGid(false);
     uid_t uid(-1);
@@ -483,8 +484,7 @@ int service::operator()(int argc, char *argv[])
 
     bool daemonize(false);
 
-    std::string username;
-    std::string groupname;
+    Config config;
     fs::path pidFilePath;
 
     try {
@@ -507,12 +507,7 @@ int service::operator()(int argc, char *argv[])
              , "Signal to be sent to running instance: stop, logrotate, test.")
             ;
 
-        genericConfig.add_options()
-            ("service.user", po::value(&username)
-             , "Switch process persona to given username.")
-            ("service.group", po::value(&groupname)
-             , "Switch process persona to given group name.")
-            ;
+        config.configuration(genericCmdline, genericConfig);
 
         auto vm(program::configure(argc, argv, genericCmdline, genericConfig));
         daemonize = vm.count("daemonize");
@@ -645,7 +640,7 @@ int service::operator()(int argc, char *argv[])
 
     prePersonaSwitch();
     try {
-        switchPersona(log_, username, groupname);
+        switchPersona(log_, config);
     } catch (const std::exception &e) {
         return EXIT_FAILURE;
     }
@@ -718,6 +713,23 @@ void service::configure(const std::vector<std::string> &)
 inline bool service::help(std::ostream &, const std::string &)
 {
     return false;
+}
+
+void service::Config::configuration(po::options_description &cmdline
+                                    , po::options_description &config)
+{
+    (void) cmdline;
+    config.add_options()
+        ("service.user", po::value(&username)
+         , "Switch process persona to given username.")
+        ("service.group", po::value(&groupname)
+         , "Switch process persona to given group name.")
+        ;
+}
+
+void service::Config::configure(const po::variables_map &vars)
+{
+    (void) vars;
 }
 
 } // namespace service

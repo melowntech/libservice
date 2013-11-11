@@ -32,6 +32,18 @@ public:
      */
     void globalTerminate(bool value = true, long pid = 0);
 
+    struct Config {
+        std::string username;
+        std::string groupname;
+
+        Config() {}
+
+        void configuration(po::options_description &cmdline
+                           , po::options_description &config);
+
+        void configure(const po::variables_map &vars);
+    };
+
 protected:
     typedef std::shared_ptr<void> Cleanup;
 
