@@ -179,7 +179,7 @@ int waitForStop(dbglog::module &log, const fs::path &pidFile
                 , const SigDef &def)
 {
     try {
-        boost::optional<utility::steady_clock::time_point>
+        utility::steady_clock::time_point
             deadline(utility::steady_clock::now()
                      + std::chrono::seconds(def.timeout));
         for (bool first(true);; first = false) {
