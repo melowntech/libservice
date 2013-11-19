@@ -22,20 +22,20 @@
 
 namespace service {
 
-program::program(const std::string &name, const std::string &version
+Program::Program(const std::string &name, const std::string &version
                  , int flags)
     : name(name), version(version)
     , log_(dbglog::make_module(name)), flags_(flags)
 {
 }
 
-program::~program()
+Program::~Program()
 {
 }
 
-std::string program::identity() const { return name + "-" + version; }
+std::string Program::identity() const { return name + "-" + version; }
 
-std::string program::versionInfo() const
+std::string Program::versionInfo() const
 {
     std::ostringstream os;
     os << name << ' ' << version
@@ -45,7 +45,7 @@ std::string program::versionInfo() const
 }
 
 po::variables_map
-program::configure(int argc, char *argv[]
+Program::configure(int argc, char *argv[]
                    , const po::options_description &genericConcig)
 {
     return configure(argc, argv
@@ -55,7 +55,7 @@ program::configure(int argc, char *argv[]
 }
 
 po::variables_map
-program::configure(int argc, char *argv[]
+Program::configure(int argc, char *argv[]
                    , const po::options_description &genericCmdline
                    , const po::options_description &genericConcig)
 {
@@ -88,13 +88,13 @@ const char *EXTRA_OPTIONS = "\n";
 } // namespace
 
 // nothing to do here
-void program::preNotifyHook(const po::variables_map &) {}
+void Program::preNotifyHook(const po::variables_map &) {}
 
 // nothing to do here
-void program::preConfigHook(const po::variables_map &) {}
+void Program::preConfigHook(const po::variables_map &) {}
 
 po::variables_map
-program::configureImpl(int argc, char *argv[]
+Program::configureImpl(int argc, char *argv[]
                        , po::options_description genericCmdline
                        , po::options_description genericConfig)
 {

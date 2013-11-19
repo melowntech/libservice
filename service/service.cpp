@@ -10,260 +10,29 @@
 #include <pwd.h>
 #include <grp.h>
 
-#include <boost/asio.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/optional.hpp>
 #include <boost/utility/in_place_factory.hpp>
 
-#include <boost/interprocess/anonymous_shared_memory.hpp>
-#include <boost/interprocess/sync/interprocess_mutex.hpp>
-#include <boost/interprocess/sync/scoped_lock.hpp>
-
 #include "service.hpp"
 #include "pidfile.hpp"
+#include "detail/signalhandler.hpp"
 
-namespace asio = boost::asio;
 namespace fs = boost::filesystem;
-namespace bi = boost::interprocess;
 
 namespace service {
 
-namespace {
-    class Allocator : boost::noncopyable {
-    public:
-        Allocator(std::size_t size)
-            : mem_(bi::anonymous_shared_memory(size))
-            , size_(size), offset_()
-        {}
-
-        template <typename T>
-        T* get(std::size_t count = 1)
-        {
-            // TODO: check size
-            auto data(static_cast<char*>(mem_.get_address()) + offset_);
-            offset_ += sizeof(T) * count;
-            return reinterpret_cast<T*>(data);
-        }
-
-    private:
-        bi::mapped_region mem_;
-        std::size_t size_;
-        std::size_t offset_;
-    };
-
-    class Terminator : boost::noncopyable {
-    public:
-        Terminator(Allocator &mem, std::size_t size)
-            : lock_(*new (mem.get<LockType>()) LockType())
-            , pids_(mem.get< ::pid_t>(size)), size_(size)
-        {
-            // reset all slots
-            for (auto &p : *this) { p = 0; }
-        }
-
-        bool add(::pid_t pid) {
-            ScopedLock guard(lock_);
-            if (!pid) { pid = ::getpid(); }
-            if (find(pid)) { return true; }
-            for (auto &p : *this) {
-                if (!p) { p = pid; return true; }
-            }
-            // cannot add
-            return false;
-        }
-
-        void remove(::pid_t pid) {
-            ScopedLock guard(lock_);
-            if (!pid) { pid = ::getpid(); }
-            auto p(find(pid));
-            if (p) { p = 0; }
-        }
-
-        bool find() {
-            ScopedLock guard(lock_);
-            return find(::getpid());
-        }
-
-        ::pid_t* begin() { return pids_; }
-        ::pid_t* end() { return pids_ + size_; }
-
-    private:
-        ::pid_t* find(::pid_t pid) {
-            for (auto &p : *this) {
-                if (p == pid) { return &p; }
-            }
-            return nullptr;
-        }
-
-        typedef bi::interprocess_mutex LockType;
-        typedef bi::scoped_lock<LockType> ScopedLock;
-        LockType &lock_;
-
-        ::pid_t *pids_;
-        std::size_t size_;
-    };
-}
-
-struct service::SignalHandler : boost::noncopyable {
-public:
-    SignalHandler(dbglog::module &log, service &owner, pid_t mainPid)
-        : signals_(ios_, SIGTERM, SIGINT, SIGHUP)
-        , mem_(4096)
-        , terminator_(mem_, 32)
-        , terminated_(* new (mem_.get<std::atomic_bool>())
-                      std::atomic_bool(false))
-        , thisTerminated_(false)
-        , logRotateEvent_(* new (mem_.get<std::atomic<std::uint64_t> >())
-                          std::atomic<std::uint64_t>(0))
-        , lastLogRotateEvent_(0)
-        , statEvent_(* new (mem_.get<std::atomic<std::uint64_t> >())
-                     std::atomic<std::uint64_t>(0))
-        , lastStatEvent_(0)
-        , log_(log), owner_(owner), mainPid_(mainPid)
-    {
-        signals_.add(SIGUSR1);
-    }
-
-    struct ScopedHandler {
-        ScopedHandler(SignalHandler &h) : h(h) { h.start(); }
-        ~ScopedHandler() { h.stop(); }
-
-        SignalHandler &h;
-    };
-
-    void terminate() { terminated_ = true; }
-
-    /** Processes events and returns whether we should terminate.
-     */
-    bool process() {
-        ios_.poll();
-
-        // TODO: last event should be (process-local) atomic to handle multiple
-        // threads calling this function
-
-        // check for logrotate request
-        {
-            auto value(logRotateEvent_.load());
-            if (value != lastLogRotateEvent_) {
-                LOG(info3, log_) << "Logrotate: <" << owner_.logFile() << ">.";
-                dbglog::log_file(owner_.logFile().string());
-                LOG(info4, log_)
-                    << "Service " << owner_.name << '-' << owner_.version
-                    << ": log rotated.";
-                lastLogRotateEvent_ = value;
-            }
-        }
-
-        // check for statistics request
-        {
-            auto value(statEvent_.load());
-            if ((value != lastStatEvent_) && (::getpid() == mainPid_)) {
-                // statistics are processed only in main process
-                owner_.stat();
-                lastStatEvent_ = value;
-            }
-        }
-
-        return terminated_ || thisTerminated_;
-    }
-
-    void globalTerminate(bool value, ::pid_t pid) {
-        if (value) {
-            terminator_.add(pid);
-        } else {
-            terminator_.remove(pid);
-        }
-    }
-
-private:
-    void start() {
-        signals_.async_wait(boost::bind(&SignalHandler::signal, this
-                                        , asio::placeholders::error
-                                        , asio::placeholders::signal_number));
-    }
-
-    void stop() {
-        signals_.cancel();
-    }
-
-    void signal(const boost::system::error_code &e, int signo) {
-        if (e) {
-            if (boost::asio::error::operation_aborted == e) {
-                return;
-            }
-            start();
-        }
-
-        // ignore signal '0'
-        if (!signo) {
-            start();
-            return;
-        }
-
-        auto signame(::strsignal(signo));
-
-        LOG(debug, log_)
-            << "SignalHandler received signal: <" << signo
-            << ", " << signame << ">.";
-        switch (signo) {
-        case SIGTERM:
-        case SIGINT:
-            LOG(info2, log_)
-                << "Terminate signal: <" << signo << ", " << signame << ">.";
-            markTerminated();
-            break;
-
-        case SIGHUP:
-            // mark logrotate
-            ++logRotateEvent_;
-            break;
-
-        case SIGUSR1:
-            // mark statistics request
-            ++statEvent_;
-            break;
-        }
-        start();
-    }
-
-    void markTerminated() {
-        thisTerminated_ = true;
-
-        // check for global termination
-        if (terminator_.find()) {
-            LOG(info1) << "Global terminate.";
-            terminated_ = true;
-        } else {
-            LOG(info1) << "Local terminate.";
-        }
-    }
-
-    asio::io_service ios_;
-    asio::signal_set signals_;
-    Allocator mem_;
-    Terminator terminator_;
-    std::atomic_bool &terminated_;
-    std::atomic_bool thisTerminated_;
-    std::atomic<std::uint64_t> &logRotateEvent_;
-    std::uint64_t lastLogRotateEvent_;
-    std::atomic<std::uint64_t> &statEvent_;
-    std::uint64_t lastStatEvent_;
-    dbglog::module &log_;
-    service &owner_;
-    pid_t mainPid_;
-};
-
-service::service(const std::string &name, const std::string &version
+Service::Service(const std::string &name, const std::string &version
                  , int flags)
-    : program(name, version, flags)
+    : Program(name, version, flags)
 {}
 
-service::~service()
+Service::~Service()
 {}
 
 namespace {
 
-void switchPersona(dbglog::module &log, const service::Config &config)
+void switchPersona(dbglog::module &log, const Service::Config &config)
 {
     const auto &username(config.username);
     const auto &groupname(config.groupname);
@@ -449,7 +218,7 @@ extern "C" {
 
 } // namespace
 
-void service::preConfigHook(const po::variables_map &vars)
+void Service::preConfigHook(const po::variables_map &vars)
 {
     if (!vars.count("signal")) {
         // normal startup
@@ -478,7 +247,7 @@ void service::preConfigHook(const po::variables_map &vars)
                              , vars["signal"].as<std::string>()));
 }
 
-int service::operator()(int argc, char *argv[])
+int Service::operator()(int argc, char *argv[])
 {
     dbglog::thread_id("main");
 
@@ -504,12 +273,14 @@ int service::operator()(int argc, char *argv[])
             ("pidfile", po::value(&pidFilePath)
              , "Path to pid file.")
             ("signal,s", po::value<std::string>()
-             , "Signal to be sent to running instance: stop, logrotate, test.")
+             , "Signal to be sent to running instance: stop, logrotate, test. "
+             "stop can be followed by /timeout specifying number of seconds "
+             "to wait for running process to terminate.")
             ;
 
         config.configuration(genericCmdline, genericConfig);
 
-        auto vm(program::configure(argc, argv, genericCmdline, genericConfig));
+        auto vm(Program::configure(argc, argv, genericCmdline, genericConfig));
         daemonize = vm.count("daemonize");
         daemonizeNochdir = vm.count("daemonize-nochdir");
         daemonizeNoclose = vm.count("daemonize-noclose");
@@ -647,7 +418,7 @@ int service::operator()(int argc, char *argv[])
     postPersonaSwitch();
 
     // start signal handler in main process
-    signalHandler_.reset(new SignalHandler(log_, *this, ::getpid()));
+    signalHandler_.reset(new detail::SignalHandler(log_, *this, ::getpid()));
 
     // we are the one that terminates whole daemon!
     globalTerminate(true);
@@ -655,7 +426,7 @@ int service::operator()(int argc, char *argv[])
     int code = EXIT_SUCCESS;
     {
 
-        SignalHandler::ScopedHandler signals(*signalHandler_);
+        detail::SignalHandler::ScopedHandler signals(*signalHandler_);
 
         Cleanup cleanup;
         try {
@@ -689,33 +460,33 @@ int service::operator()(int argc, char *argv[])
     return code;
 }
 
-void service::stop()
+void Service::stop()
 {
     signalHandler_->terminate();
 }
 
-bool service::isRunning() {
+bool Service::isRunning() {
     return !signalHandler_->process();
 }
 
-void service::globalTerminate(bool value, long pid)
+void Service::globalTerminate(bool value, long pid)
 {
     signalHandler_->globalTerminate(value, pid);
 }
 
-void service::configure(const std::vector<std::string> &)
+void Service::configure(const std::vector<std::string> &)
 {
     throw po::error
         ("Program asked to collect unrecognized options "
          "although it is not processing them. Go fix your program.");
 }
 
-inline bool service::help(std::ostream &, const std::string &)
+inline bool Service::help(std::ostream &, const std::string &)
 {
     return false;
 }
 
-void service::Config::configuration(po::options_description &cmdline
+void Service::Config::configuration(po::options_description &cmdline
                                     , po::options_description &config)
 {
     (void) cmdline;
@@ -727,9 +498,9 @@ void service::Config::configuration(po::options_description &cmdline
         ;
 }
 
-void service::Config::configure(const po::variables_map &vars)
+void Service::Config::configure(const po::variables_map &vars)
 {
     (void) vars;
 }
 
-} // namespace service
+} // namespace Service

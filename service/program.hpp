@@ -28,9 +28,9 @@ inline void immediateExit(int code) { throw immediate_exit(code); }
 constexpr int DISABLE_CONFIG_HELP = 0x01;
 constexpr int ENABLE_UNRECOGNIZED_OPTIONS = 0x02;
 
-class program : boost::noncopyable {
+class Program : boost::noncopyable {
 public:
-    virtual ~program();
+    virtual ~Program();
 
     std::string identity() const;
     std::string versionInfo() const;
@@ -43,7 +43,7 @@ public:
     int flags() const { return flags_; }
 
 protected:
-    program(const std::string &name, const std::string &version, int flags);
+    Program(const std::string &name, const std::string &version, int flags);
 
     virtual void configuration(po::options_description &cmdline
                                , po::options_description &config

@@ -9,12 +9,16 @@
 
 namespace service {
 
-class service : protected program, public utility::Runnable {
+namespace detail {
+    struct SignalHandler;
+} // namespace detail
+
+class Service : protected Program, public utility::Runnable {
 public:
-    service(const std::string &name, const std::string &version
+    Service(const std::string &name, const std::string &version
             , int flags = 0x0);
 
-    ~service();
+    ~Service();
 
     int operator()(int argc, char *argv[]);
 
@@ -45,6 +49,8 @@ public:
     };
 
 protected:
+    friend class detail::SignalHandler;
+
     typedef std::shared_ptr<void> Cleanup;
 
     virtual void configuration(po::options_description &cmdline
@@ -77,8 +83,7 @@ protected:
 private:
     bool daemonize_;
 
-    struct SignalHandler;
-    std::unique_ptr<SignalHandler> signalHandler_;
+    std::unique_ptr<detail::SignalHandler> signalHandler_;
 };
 
 } // namespace service

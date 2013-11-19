@@ -8,6 +8,7 @@ compile_with_hostname()
 set(service_SOURCES
     program.hpp program.cpp
     service.hpp service.cpp
+    detail/signalhandler.hpp detail/signalhandler.cpp
     cmdline.hpp cmdline.cpp
     pidfile.hpp pidfile.cpp
 )

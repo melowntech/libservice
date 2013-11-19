@@ -2,20 +2,20 @@
 
 namespace service {
 
-cmdline::cmdline(const std::string &name, const std::string &version
+Cmdline::Cmdline(const std::string &name, const std::string &version
                  , int flags)
-    : program(name, version, flags)
+    : Program(name, version, flags)
 {}
 
-cmdline::~cmdline()
+Cmdline::~Cmdline()
 {}
 
-int cmdline::operator()(int argc, char *argv[])
+int Cmdline::operator()(int argc, char *argv[])
 {
     dbglog::thread_id("main");
 
     try {
-        program::configure
+        Program::configure
             (argc, argv, po::options_description
              ("configuration file options (all options can be overridden "
               "on command line)"));
@@ -32,14 +32,14 @@ int cmdline::operator()(int argc, char *argv[])
     return code;
 }
 
-void cmdline::configure(const std::vector<std::string> &)
+void Cmdline::configure(const std::vector<std::string> &)
 {
     throw po::error
         ("Program asked to collect unrecognized options "
          "although it is not processing them. Go fix your program.");
 }
 
-inline bool cmdline::help(std::ostream &, const std::string &) const
+inline bool Cmdline::help(std::ostream &, const std::string &) const
 {
     return false;
 }

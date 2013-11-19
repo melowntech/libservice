@@ -5,12 +5,12 @@
 
 namespace service {
 
-class cmdline : protected program {
+class Cmdline : protected Program {
 public:
-    cmdline(const std::string &name, const std::string &version
+    Cmdline(const std::string &name, const std::string &version
             , int flags = 0x0);
 
-    ~cmdline();
+    ~Cmdline();
 
     int operator()(int argc, char *argv[]);
 
