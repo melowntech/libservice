@@ -139,7 +139,8 @@ void allocate(const fs::path &path)
     file.release();
 }
 
-unsigned long signal(const fs::path &path, int signal)
+long signal(const fs::path &path, int signal
+            , bool reportMissingPid)
 {
     File file;
 
@@ -151,7 +152,7 @@ unsigned long signal(const fs::path &path, int signal)
             throw e;
         }
 
-        return 0;
+        return reportMissingPid ? -1 : 0;
     }
 
     if (!file.fdopen("r")) {

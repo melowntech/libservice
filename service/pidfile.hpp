@@ -16,7 +16,8 @@ void allocate(const boost::filesystem::path &path);
 /** Returns true if server was signalled, false if it is not running.
  *  Throws std::exception if an error occurred.
  */
-unsigned long signal(const boost::filesystem::path &path, int signal);
+long signal(const boost::filesystem::path &path, int signal
+            , bool reportMissingPid = false);
 
 } } // namespace service::pidfile
 

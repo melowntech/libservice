@@ -2,9 +2,10 @@
 #include <memory>
 #include <atomic>
 #include <system_error>
-#include <signal.h>
-#include <string.h>
+#include <tuple>
+#include <cstring>
 
+#include <signal.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <pwd.h>
@@ -17,6 +18,8 @@
 #include "service.hpp"
 #include "pidfile.hpp"
 #include "detail/signalhandler.hpp"
+
+#include "utility/steady-clock.hpp"
 
 namespace fs = boost::filesystem;
 
@@ -115,34 +118,147 @@ void switchPersona(dbglog::module &log, const Service::Config &config)
         << "Run under " << username << ":" << groupname << ".";
 }
 
-int sendSignal(dbglog::module &log, const fs::path &pidFile
-               , const std::string &signal)
+struct SigDef {
+    std::string signal;
+    int signo;
+    std::time_t timeout;
+
+    SigDef() : signo(), timeout(-1) {}
+};
+
+namespace Signal { enum {
+    stop = SIGTERM
+    , logrotate = SIGHUP
+    , stat = SIGUSR1
+    , status = 0
+}; }
+
+SigDef parseSigDef(dbglog::module &log, const std::string &sigDef)
 {
-    int signo = 0;
+    auto slash(sigDef.find('/'));
+
+    SigDef def;
+    def.signal = sigDef.substr(0, slash);
+
+    auto &signal(def.signal);
+    auto &signo(def.signo);
     if (signal == "stop") {
-        signo = SIGTERM;
+        signo = Signal::stop;
     } else if (signal == "logrotate") {
-        signo = SIGHUP;
-    } else if (signal == "test") {
-        signo = 0;
+        signo = Signal::logrotate;
+    } else if (signal == "status") {
+        signo = Signal::status;
     } else if (signal == "stat") {
-        signo = SIGUSR1;
+        signo = Signal::stat;
     } else {
         LOG(fatal, log) << "Unrecognized signal: <" << signal << ">.";
-        return EXIT_FAILURE;
+        service::immediate_exit(3);
     }
 
-    LOG(info1)
-        << "About to send signal <" << signal << "> to running process.";
+    if (slash != std::string::npos) {
+        if (signo == Signal::stop) {
+            try {
+                def.timeout = boost::lexical_cast<std::time_t>
+                    (sigDef.substr(slash + 1));
+            } catch (const boost::bad_lexical_cast&) {
+                LOG(fatal, log)
+                    << "Invalid timeout specification ("
+                    << sigDef.substr(slash + 1) << ").";
+                service::immediate_exit(3);
+            }
+        } else {
+            LOG(warn2) << "Ignoring timeout specification for Signal <"
+                       << signal << ">.";
+        }
+    }
+
+    return def;
+}
+
+int waitForStop(dbglog::module &log, const fs::path &pidFile
+                , const SigDef &def)
+{
     try {
-        if (!pidfile::signal(pidFile, signo)) {
+        boost::optional<utility::steady_clock::time_point>
+            deadline(utility::steady_clock::now()
+                     + std::chrono::seconds(def.timeout));
+        for (bool first(true);; first = false) {
+            if (!pidfile::signal(pidFile, def.signo)) {
+                // fail if process is not running during first test
+                // OK if process was running but finished now
+                return first ? 1 : 0;
+            }
+
+            if (utility::steady_clock::now() >= deadline) {
+                // program was running but cannot stop in given time
+                return 2;
+            }
+
+            // sleep a bit and retry
+            ::usleep(100000);
+        }
+    } catch (const std::exception &e) {
+        LOG(fatal, log)
+            << "Cannot signal running instance: <" << e.what() << ">.";
+        return 3;
+    }
+}
+
+int processStatus(dbglog::module &log, const fs::path &pidFile
+                  , const SigDef &def)
+{
+    try {
+        auto pid(pidfile::signal(pidFile, def.signo, true));
+        if (!pid) {
+            // Program is not running and the pid file exists.
+            return 1;
+        } else if (pid < 0) {
+            // Program is not running.
+            return 3;
+        }
+        // program is running
+        return 0;
+    } catch (const std::exception &e) {
+        LOG(fatal, log)
+            << "Cannot signal running instance: <" << e.what() << ">.";
+        // Unable to determine program status.
+        return 4;
+    }
+}
+
+int sendSignal(dbglog::module &log, const fs::path &pidFile
+               , const std::string &arg)
+{
+    auto def(parseSigDef(log, arg));
+
+    LOG(info1, log)
+        << "About to send signal <" << def.signal << "> to running process.";
+
+    // waiting stop has special handler
+    switch (def.signo) {
+    case Signal::stop:
+        if (def.timeout >= 0) {
+            return waitForStop(log, pidFile, def);
+        }
+        break;
+
+    case Signal::status:
+        return processStatus(log, pidFile, def);
+
+    default:
+        break;
+    }
+
+    // generic signal handling
+    try {
+        if (!pidfile::signal(pidFile, def.signo)) {
             // not running -> return 1
             return 1;
         }
     } catch (const std::exception &e) {
         LOG(fatal, log)
             << "Cannot signal running instance: <" << e.what() << ">.";
-        return EXIT_FAILURE;
+        return 3;
     }
 
     return EXIT_SUCCESS;
@@ -273,9 +389,10 @@ int Service::operator()(int argc, char *argv[])
             ("pidfile", po::value(&pidFilePath)
              , "Path to pid file.")
             ("signal,s", po::value<std::string>()
-             , "Signal to be sent to running instance: stop, logrotate, test. "
-             "stop can be followed by /timeout specifying number of seconds "
-             "to wait for running process to terminate.")
+             , "Signal to be sent to running instance: "
+             "stop, logrotate, status. "
+             "Signal 'stop' can be followed by /timeout specifying number "
+             "of seconds to wait for running process to terminate.")
             ;
 
         config.configuration(genericCmdline, genericConfig);
