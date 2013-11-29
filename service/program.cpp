@@ -69,7 +69,7 @@ Program::Program(const std::string &name, const std::string &version
         std::locale("");
     } catch (const std::exception &e) {
         LOG(warn3)
-            << "Invalid locale settings in environment (" << Env{} << "). "
+            << "Invalid locale settings in the environment (" << Env{} << "). "
             << "Falling back to \"C\" locale.";
         setCLocale();
     }
