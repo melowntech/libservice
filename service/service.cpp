@@ -327,7 +327,7 @@ void daemonizeFinish()
 }
 
 extern "C" {
-    void atfork(void) {
+    void service_atfork(void) {
         daemonizeFinish();
     }
 }
@@ -506,7 +506,7 @@ int Service::operator()(int argc, char *argv[])
             notifierFd = notifier2[1];
 
             // we want to close notifier when something forks
-            if (-1 == ::pthread_atfork(nullptr, nullptr, &atfork)) {
+            if (-1 == ::pthread_atfork(nullptr, nullptr, &service_atfork)) {
                 LOG(fatal, log_)
                     << "Atfork registration failed: " << errno;
                 _exit(EXIT_FAILURE);

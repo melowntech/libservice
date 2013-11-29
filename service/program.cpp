@@ -1,10 +1,12 @@
-#include <errno.h>
 #include <unistd.h>
 
+#include <cerrno>
+#include <cstdlib>
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <set>
+#include <locale>
 
 #include <boost/filesystem.hpp>
 
@@ -22,11 +24,55 @@
 
 namespace service {
 
+namespace {
+
+struct Env {};
+
+inline std::ostream& operator<<(std::ostream &os, const Env &)
+{
+    bool first(true);
+    for (const auto var : {
+            "LANG", "LC_ALL", "LC_COLLATE"
+            , "LC_CTYPE", "LC_MONETARY", "LC_NUMERIC", "LC_TIME"})
+    {
+        auto value(::getenv(var));
+        if (!value) { continue; }
+        if (!first) { os << ", "; } else { first = false; }
+        os << var << "=" << value;
+    }
+    return os;
+}
+
+void setCLocale()
+{
+    // unset all env settings
+    ::unsetenv("LANG");
+    ::unsetenv("LC_ALL");
+    ::unsetenv("LC_COLLATE");
+    ::unsetenv("LC_CTYPE");
+    ::unsetenv("LC_MONETARY");
+    ::unsetenv("LC_NUMERIC");
+    ::unsetenv("LC_TIME");
+
+    std::locale::global(std::locale("C"));
+    std::setlocale(LC_ALL, "C");
+}
+
+} // namespace
+
 Program::Program(const std::string &name, const std::string &version
                  , int flags)
     : name(name), version(version)
     , log_(dbglog::make_module(name)), flags_(flags)
 {
+    try {
+        std::locale("");
+    } catch (const std::exception &e) {
+        LOG(warn3)
+            << "Invalid locale settings in environment (" << Env{} << "). "
+            << "Falling back to \"C\" locale.";
+        setCLocale();
+    }
 }
 
 Program::~Program()
@@ -64,9 +110,9 @@ Program::configure(int argc, char *argv[]
     } catch (const po::error &e) {
         std::cerr << name << ": " << e.what() << std::endl;
         immediateExit(EXIT_FAILURE);
-    } catch (const std::exception &e) {
-        LOG(fatal, log_) << "Configure failed: " << e.what();
-        immediateExit(EXIT_FAILURE);
+    // } catch (const std::exception &e) {
+    //     LOG(fatal, log_) << "Configure failed: " << e.what();
+    //     immediateExit(EXIT_FAILURE);
     }
     throw;
 }
