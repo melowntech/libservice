@@ -27,6 +27,7 @@ inline void immediateExit(int code) { throw immediate_exit(code); }
 
 constexpr int DISABLE_CONFIG_HELP = 0x01;
 constexpr int ENABLE_UNRECOGNIZED_OPTIONS = 0x02;
+constexpr int DISABLE_EXCESSIVE_LOGGING = 0x04;
 
 class Program : boost::noncopyable {
 public:
@@ -83,6 +84,10 @@ protected:
     /** Hook before notify(vars) and configure(vars) is called.
      */
     virtual void preConfigHook(const po::variables_map &vars);
+
+    bool noExcessiveLogging() const {
+        return flags_ & DISABLE_EXCESSIVE_LOGGING;
+    }
 
 private:
     po::variables_map

@@ -25,7 +25,7 @@ int Cmdline::operator()(int argc, char *argv[])
 
     int code = run();
 
-    if (code) {
+    if (code && !noExcessiveLogging()) {
         LOG(err4, log_) << "Terminated with error " << code << '.';
     }
 

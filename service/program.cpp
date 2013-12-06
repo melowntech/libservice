@@ -110,9 +110,9 @@ Program::configure(int argc, char *argv[]
     } catch (const po::error &e) {
         std::cerr << name << ": " << e.what() << std::endl;
         immediateExit(EXIT_FAILURE);
-    // } catch (const std::exception &e) {
-    //     LOG(fatal, log_) << "Configure failed: " << e.what();
-    //     immediateExit(EXIT_FAILURE);
+    } catch (const std::exception &e) {
+        LOG(fatal, log_) << "Configure failed: " << e.what();
+        immediateExit(EXIT_FAILURE);
     }
     throw;
 }
