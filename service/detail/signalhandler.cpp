@@ -341,5 +341,4 @@ void SignalHandler::atFork(utility::AtFork::Event event)
     }
 }
 
-} } // namespace service::detai
-
+} } // namespace service::detail
