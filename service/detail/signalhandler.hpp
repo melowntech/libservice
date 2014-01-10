@@ -1,6 +1,8 @@
 #ifndef shared_service_detail_signalhandler_hpp_included_
 #define shared_service_detail_signalhandler_hpp_included_
 
+#include <memory>
+
 #include <boost/noncopyable.hpp>
 #include <boost/asio.hpp>
 
@@ -8,12 +10,18 @@
 #include <boost/interprocess/sync/interprocess_mutex.hpp>
 #include <boost/interprocess/sync/scoped_lock.hpp>
 
+#include <boost/filesystem/path.hpp>
+
 #include "dbglog/dbglog.hpp"
+#include "utility/atfork.hpp"
 
 #include "../service.hpp"
 
 namespace bi = boost::interprocess;
 namespace asio = boost::asio;
+namespace fs = boost::filesystem;
+
+namespace local = boost::asio::local;
 
 namespace service { namespace detail {
 
@@ -90,9 +98,12 @@ private:
     std::size_t size_;
 };
 
-struct SignalHandler : boost::noncopyable {
+class CtrlConnection;
+
+class SignalHandler : boost::noncopyable
+{
 public:
-    SignalHandler(dbglog::module &log, Service &owner, pid_t mainPid);
+    typedef std::shared_ptr<SignalHandler> pointer;
 
     struct ScopedHandler {
         ScopedHandler(SignalHandler &h) : h(h) { h.start(); }
@@ -100,6 +111,11 @@ public:
 
         SignalHandler &h;
     };
+
+    SignalHandler(dbglog::module &log, Service &owner, pid_t mainPid
+                  , const boost::optional<fs::path> &ctrlPath);
+
+    ~SignalHandler();
 
     void terminate();
 
@@ -109,14 +125,27 @@ public:
 
     void globalTerminate(bool value, ::pid_t pid);
 
+    void logRotate();
+
 private:
     void start();
 
     void stop();
 
+    void startSignals();
+
     void signal(const boost::system::error_code &e, int signo);
 
     void markTerminated();
+
+    void startAccept();
+
+    void stopAccept();
+
+    void newCtrlConnection(const boost::system::error_code &e
+                           , std::shared_ptr<CtrlConnection> con);
+
+    void atFork(utility::AtFork::Event event);
 
     asio::io_service ios_;
     asio::signal_set signals_;
@@ -131,6 +160,10 @@ private:
     dbglog::module &log_;
     Service &owner_;
     pid_t mainPid_;
+
+    // control support
+    boost::optional<fs::path> ctrlPath_;
+    local::stream_protocol::acceptor ctrl_;
 };
 
 } } // namespace service::detail

@@ -26,10 +26,6 @@ public:
 
     void stop();
 
-    /** Show service statistics. Called on SIGUSR1.
-     */
-    virtual void stat() {}
-
     /** Adds/removes this process to list of processes that are mark global
      *  terminate flag on terminate signal. All other processes handle terminate
      *  signal locally.
@@ -47,6 +43,17 @@ public:
 
         void configure(const po::variables_map &vars);
     };
+
+    struct CtrlCommand {
+        std::string cmd;
+        std::vector<std::string> args;
+    };
+
+    void processCtrl(const CtrlCommand &cmd, std::ostream &output);
+
+    void processStat();
+
+    void processMonitor(std::ostream &output);
 
 protected:
     friend class detail::SignalHandler;
@@ -80,10 +87,16 @@ protected:
      */
     virtual void postPersonaSwitch() {}
 
+    virtual bool ctrl(const CtrlCommand &cmd, std::ostream &output);
+
+    virtual void stat(std::ostream &output);
+
+    virtual void monitor(std::ostream &output);
+
 private:
     bool daemonize_;
 
-    std::unique_ptr<detail::SignalHandler> signalHandler_;
+    std::shared_ptr<detail::SignalHandler> signalHandler_;
 };
 
 } // namespace service

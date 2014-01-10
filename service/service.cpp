@@ -20,6 +20,7 @@
 #include "detail/signalhandler.hpp"
 
 #include "utility/steady-clock.hpp"
+#include "utility/path.hpp"
 
 namespace fs = boost::filesystem;
 
@@ -296,6 +297,7 @@ bool waitForChildInitialization(dbglog::module &log, utility::Runnable &master
 bool daemonizeNochdir(false);
 bool daemonizeNoclose(false);
 int notifierFd(-1);
+bool daemonizeFinishRun(false);
 
 void daemonizeFinish()
 {
@@ -320,15 +322,15 @@ void daemonizeFinish()
         // TODO: check errors
         ::close(notifierFd);
     }
-
-    if (-1 == ::pthread_atfork(nullptr, nullptr, nullptr)) {
-        LOG(warn4) << "Atfork deregistration failed: " << errno;
-    }
+    daemonizeFinishRun = true;
 }
 
 extern "C" {
     void service_atfork(void) {
-        daemonizeFinish();
+        LOG(info4) << "service_atfork";
+        if (!daemonizeFinishRun) {
+            daemonizeFinish();
+        }
     }
 }
 
@@ -516,6 +518,8 @@ int Service::operator()(int argc, char *argv[])
         LOG(info4, log_) << "Running in background.";
     }
 
+    boost::optional<fs::path> ctrlPath;
+
     if (!pidFilePath.empty()) {
         // handle pidfile
         try {
@@ -524,6 +528,15 @@ int Service::operator()(int argc, char *argv[])
             LOG(fatal, log_) << "Cannot allocate pid file: " << e.what();
             return EXIT_FAILURE;
         }
+        // control socket path (constructed from pid file)
+        ctrlPath = utility::addExtension(pidFilePath, ".ctrl");
+
+        // we need to remove file if exists
+        remove_all(*ctrlPath);
+        LOG(info4) << "Using control socket at " << *ctrlPath << ".";
+
+        // debug
+        ctrlPath = boost::none;
     }
 
     prePersonaSwitch();
@@ -535,7 +548,8 @@ int Service::operator()(int argc, char *argv[])
     postPersonaSwitch();
 
     // start signal handler in main process
-    signalHandler_.reset(new detail::SignalHandler(log_, *this, ::getpid()));
+    signalHandler_ = std::make_shared<detail::SignalHandler>
+        (log_, *this, ::getpid(), ctrlPath);
 
     // we are the one that terminates whole daemon!
     globalTerminate(true);
@@ -598,9 +612,55 @@ void Service::configure(const std::vector<std::string> &)
          "although it is not processing them. Go fix your program.");
 }
 
-inline bool Service::help(std::ostream &, const std::string &)
+bool Service::help(std::ostream &, const std::string &)
 {
     return false;
+}
+
+void Service::processCtrl(const CtrlCommand &cmd, std::ostream &output)
+{
+    // service supported commands
+    if (cmd.cmd == "stat") {
+        stat(output);
+    } else if (cmd.cmd == "monitor") {
+        processMonitor(output);
+    } else if (!ctrl(cmd, output)) {
+        output << "command <" << cmd.cmd << "> not implemented";
+    }
+}
+
+bool Service::ctrl(const CtrlCommand &cmd, std::ostream &output)
+{
+    (void) cmd;
+    (void) output;
+
+    return false;
+}
+
+void Service::processStat()
+{
+    std::ostringstream os;
+    stat(os);
+    LOG(info4) << Program::identity() << " statistics:\n" << os.str();
+}
+
+void Service::stat(std::ostream &output)
+{
+    (void) output;
+}
+
+void Service::processMonitor(std::ostream &output)
+{
+    output
+        << "identity: " << Program::versionInfo()
+        << "\npid: " << ::getpid()
+        << "\n";
+    monitor(output);
+}
+
+void Service::monitor(std::ostream &output)
+{
+    (void) output;
 }
 
 void Service::Config::configuration(po::options_description &cmdline

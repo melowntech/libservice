@@ -21,7 +21,7 @@ namespace {
 
 struct File {
     File() : fd(-1), fp(nullptr) {}
-    ~File() { close(); }
+    ~File() { if (fd > -1) { close(); } }
 
     FILE* fdopen(const char *mode) { return (fp = ::fdopen(fd, mode)); }
 
