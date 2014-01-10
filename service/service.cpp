@@ -664,8 +664,8 @@ void Service::stat(std::ostream &output)
 void Service::processMonitor(std::ostream &output)
 {
     output
-        << "identity: " << Program::versionInfo()
-        << "\npid: " << ::getpid()
+        << "Identity: " << Program::versionInfo()
+        << "\nPid: " << ::getpid()
         << "\n";
     monitor(output);
 }
