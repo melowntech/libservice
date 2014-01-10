@@ -106,9 +106,9 @@ void SignalHandler::globalTerminate(bool value, ::pid_t pid)
 
 void SignalHandler::startSignals()
 {
-    signals_.async_wait(boost::bind(&SignalHandler::signal, this
-                                    , asio::placeholders::error
-                                    , asio::placeholders::signal_number));
+    signals_.async_wait(lib::bind(&SignalHandler::signal, this
+                                  , placeholders::_1
+                                  , placeholders::_2));
 }
 
 void SignalHandler::start()
@@ -179,11 +179,11 @@ void SignalHandler::markTerminated()
 }
 
 class CtrlConnection
-    : public std::enable_shared_from_this<CtrlConnection>
+    : public lib::enable_shared_from_this<CtrlConnection>
     , boost::noncopyable
 {
 public:
-    typedef std::shared_ptr<CtrlConnection> pointer;
+    typedef lib::shared_ptr<CtrlConnection> pointer;
 
     CtrlConnection(Service &owner, asio::io_service &ios
                    , SignalHandler &sh)
@@ -215,11 +215,11 @@ void SignalHandler::startAccept()
 {
     if (!ctrl_.is_open()) { return; }
 
-    auto con(std::make_shared<CtrlConnection>(owner_, ios_, *this));
+    auto con(lib::make_shared<CtrlConnection>(owner_, ios_, *this));
     ctrl_.async_accept
         (con->socket()
-         , boost::bind(&SignalHandler::newCtrlConnection, this
-                       , asio::placeholders::error, con));
+         , lib::bind(&SignalHandler::newCtrlConnection, this
+                       , placeholders::_1, con));
 }
 
 void SignalHandler::stopAccept()
@@ -249,10 +249,10 @@ void CtrlConnection::startRead()
 
     asio::async_read_until
          (socket_, input_, "\n"
-         , boost::bind(&CtrlConnection::lineRead
-                       , shared_from_this()
-                       , asio::placeholders::error
-                       , asio::placeholders::bytes_transferred));
+         , lib::bind(&CtrlConnection::lineRead
+                     , shared_from_this()
+                     , placeholders::_1
+                     , placeholders::_2));
 }
 
 void CtrlConnection::lineRead(const boost::system::error_code &e
@@ -310,10 +310,10 @@ void CtrlConnection::lineRead(const boost::system::error_code &e
     asio::async_write
         (socket_
          , output_
-         , boost::bind(&CtrlConnection::handleWrite
-                       , shared_from_this()
-                       , asio::placeholders::error
-                       , asio::placeholders::bytes_transferred));
+         , lib::bind(&CtrlConnection::handleWrite
+                     , shared_from_this()
+                     , placeholders::_1
+                     , placeholders::_2));
 }
 
 void CtrlConnection::handleWrite(const boost::system::error_code &e

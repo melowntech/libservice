@@ -10,6 +10,10 @@
 #include <boost/interprocess/sync/interprocess_mutex.hpp>
 #include <boost/interprocess/sync/scoped_lock.hpp>
 
+#include <boost/shared_ptr.hpp>
+#include <boost/enable_shared_from_this.hpp>
+#include <boost/make_shared.hpp>
+
 #include <boost/filesystem/path.hpp>
 
 #include "dbglog/dbglog.hpp"
@@ -24,6 +28,9 @@ namespace fs = boost::filesystem;
 namespace local = boost::asio::local;
 
 namespace service { namespace detail {
+
+namespace lib = std;
+namespace placeholders = std::placeholders;
 
 class Allocator : boost::noncopyable {
 public:
@@ -143,7 +150,7 @@ private:
     void stopAccept();
 
     void newCtrlConnection(const boost::system::error_code &e
-                           , std::shared_ptr<CtrlConnection> con);
+                           , lib::shared_ptr<CtrlConnection> con);
 
     void atFork(utility::AtFork::Event event);
 
