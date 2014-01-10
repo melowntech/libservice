@@ -373,6 +373,7 @@ int Service::operator()(int argc, char *argv[])
 
     Config config;
     fs::path pidFilePath;
+    bool enableCtrl(false);
 
     try {
         po::options_description genericCmdline("command line options");
@@ -390,6 +391,9 @@ int Service::operator()(int argc, char *argv[])
              , "Do not close STDIN/OUT/ERR after forking to background.")
             ("pidfile", po::value(&pidFilePath)
              , "Path to pid file.")
+            ("enable-ctrl", po::value(&enableCtrl)
+             ->default_value(false)->implicit_value(true)
+             , "Enable control socket. Pidfile must be specified.")
             ("signal,s", po::value<std::string>()
              , "Signal to be sent to running instance: "
              "stop, logrotate, status. "
@@ -528,15 +532,14 @@ int Service::operator()(int argc, char *argv[])
             LOG(fatal, log_) << "Cannot allocate pid file: " << e.what();
             return EXIT_FAILURE;
         }
-        // control socket path (constructed from pid file)
-        ctrlPath = utility::addExtension(pidFilePath, ".ctrl");
+        if (enableCtrl) {
+            // control socket path (constructed from pid file)
+            ctrlPath = utility::addExtension(pidFilePath, ".ctrl");
 
-        // we need to remove file if exists
-        remove_all(*ctrlPath);
-        LOG(info4) << "Using control socket at " << *ctrlPath << ".";
-
-        // debug
-        ctrlPath = boost::none;
+            // we need to remove file if exists
+            remove_all(*ctrlPath);
+            LOG(info4) << "Using control socket at " << *ctrlPath << ".";
+        }
     }
 
     prePersonaSwitch();
