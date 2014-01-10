@@ -627,6 +627,7 @@ void Service::processCtrl(const CtrlCommand &cmd, std::ostream &output)
             "monitoring\n"
             ;
 
+        // let child class to append its own help
         ctrl(cmd, output);
     } else if (cmd.cmd == "stat") {
         stat(output);

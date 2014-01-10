@@ -300,6 +300,7 @@ void CtrlConnection::lineRead(const boost::system::error_code &e
                << "help           shows this help\n"
                 ;
 
+            // let owner to append its own help
             owner_.processCtrl(cmd, os);
         } else {
             owner_.processCtrl(cmd, os);
