@@ -658,7 +658,7 @@ void Service::processStat()
 
 void Service::stat(std::ostream &output)
 {
-    output << "Service provides no statistics.";
+    output << "Service provides no statistics.\n";
 }
 
 void Service::processMonitor(std::ostream &output)
