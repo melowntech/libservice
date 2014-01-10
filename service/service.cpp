@@ -620,7 +620,15 @@ bool Service::help(std::ostream &, const std::string &)
 void Service::processCtrl(const CtrlCommand &cmd, std::ostream &output)
 {
     // service supported commands
-    if (cmd.cmd == "stat") {
+    if (cmd.cmd == "help") {
+        output
+            << "stat           shows service statistics\n"
+            << "monitor        returns information suitable for service "
+            "monitoring\n"
+            ;
+
+        ctrl(cmd, output);
+    } else if (cmd.cmd == "stat") {
         stat(output);
     } else if (cmd.cmd == "monitor") {
         processMonitor(output);

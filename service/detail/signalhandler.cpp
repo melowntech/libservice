@@ -262,7 +262,7 @@ void CtrlConnection::lineRead(const boost::system::error_code &e
         if (e.value() != asio::error::eof) {
             LOG(err2) << "Control connection error: " << e;
         } else {
-            LOG(info3) << "Control connection closed";
+            LOG(info2) << "Control connection closed";
         }
         return;
     }
@@ -290,6 +290,17 @@ void CtrlConnection::lineRead(const boost::system::error_code &e
         if (cmd.cmd == "logrotate") {
             sh_.logRotate();
             os << "log rotation scheduled\n";
+        } else if (cmd.cmd == "terminate") {
+            sh_.terminate();
+            os << "termination scheduled, bye\n";
+        } else if (cmd.cmd == "help") {
+            os << "logrotate      schedules log rotation (i.e. log "
+                "reopen) event\n"
+               << "terminate      schedules termination event\n"
+               << "help           shows this help\n"
+                ;
+
+            owner_.processCtrl(cmd, os);
         } else {
             owner_.processCtrl(cmd, os);
         }
