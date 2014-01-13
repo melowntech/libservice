@@ -327,7 +327,7 @@ void daemonizeFinish()
 
 extern "C" {
     void service_atfork(void) {
-        LOG(info4) << "service_atfork";
+        LOG(info1) << "service_atfork";
         if (!daemonizeFinishRun) {
             daemonizeFinish();
         }
@@ -645,7 +645,7 @@ void Service::processCtrl(const CtrlCommand &cmd, std::ostream &output)
     } else if (cmd.cmd == "monitor") {
         processMonitor(output);
     } else if (!ctrl(cmd, output)) {
-        output << "command <" << cmd.cmd << "> not implemented";
+        output << "command <" << cmd.cmd << "> not implemented\n";
     }
 }
 
