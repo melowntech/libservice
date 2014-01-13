@@ -294,8 +294,7 @@ void CtrlConnection::lineRead(const boost::system::error_code &e
             sh_.terminate();
             os << "termination scheduled, bye\n";
         } else if (cmd.cmd == "help") {
-            os << "logrotate      schedules log rotation (i.e. log "
-                "reopen) event\n"
+            os << "logrotate      schedules log reopen event\n"
                << "terminate      schedules termination event\n"
                << "help           shows this help\n"
                 ;

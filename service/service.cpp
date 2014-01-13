@@ -334,6 +334,12 @@ extern "C" {
     }
 }
 
+boost::optional<fs::path> optionalPath(const fs::path &path)
+{
+    if (path.empty()) { return boost::none; }
+    return path;
+}
+
 } // namespace
 
 void Service::preConfigHook(const po::variables_map &vars)
@@ -373,7 +379,7 @@ int Service::operator()(int argc, char *argv[])
 
     Config config;
     fs::path pidFilePath;
-    bool enableCtrl(false);
+    fs::path ctrlPath;
 
     try {
         po::options_description genericCmdline("command line options");
@@ -391,9 +397,8 @@ int Service::operator()(int argc, char *argv[])
              , "Do not close STDIN/OUT/ERR after forking to background.")
             ("pidfile", po::value(&pidFilePath)
              , "Path to pid file.")
-            ("enable-ctrl", po::value(&enableCtrl)
-             ->default_value(false)->implicit_value(true)
-             , "Enable control socket. Pidfile must be specified.")
+            ("ctrl", po::value(&ctrlPath)
+             , "Path to ctrl socket (honored only when pid file is used).")
             ("signal,s", po::value<std::string>()
              , "Signal to be sent to running instance: "
              "stop, logrotate, status. "
@@ -417,6 +422,14 @@ int Service::operator()(int argc, char *argv[])
         // make sure pidfile is an absolute path
         if (!pidFilePath.empty()) {
             pidFilePath = absolute(pidFilePath);
+        } else if (!ctrlPath.empty()) {
+            LOG(fatal, log_)
+                << "Specified ctrl path without pid file.";
+            return EXIT_FAILURE;
+        }
+
+        if (!ctrlPath.empty()) {
+            ctrlPath = absolute(ctrlPath);
         }
     } catch (const immediate_exit &e) {
         return e.code;
@@ -522,8 +535,6 @@ int Service::operator()(int argc, char *argv[])
         LOG(info4, log_) << "Running in background.";
     }
 
-    boost::optional<fs::path> ctrlPath;
-
     if (!pidFilePath.empty()) {
         // handle pidfile
         try {
@@ -532,13 +543,10 @@ int Service::operator()(int argc, char *argv[])
             LOG(fatal, log_) << "Cannot allocate pid file: " << e.what();
             return EXIT_FAILURE;
         }
-        if (enableCtrl) {
-            // control socket path (constructed from pid file)
-            ctrlPath = utility::addExtension(pidFilePath, ".ctrl");
-
+        if (!ctrlPath.empty()) {
             // we need to remove file if exists
-            remove_all(*ctrlPath);
-            LOG(info4) << "Using control socket at " << *ctrlPath << ".";
+            remove_all(ctrlPath);
+            LOG(info4, log_) << "Using control socket at " << ctrlPath << ".";
         }
     }
 
@@ -552,7 +560,7 @@ int Service::operator()(int argc, char *argv[])
 
     // start signal handler in main process
     signalHandler_ = std::make_shared<detail::SignalHandler>
-        (log_, *this, ::getpid(), ctrlPath);
+        (log_, *this, ::getpid(), optionalPath(ctrlPath));
 
     // we are the one that terminates whole daemon!
     globalTerminate(true);
