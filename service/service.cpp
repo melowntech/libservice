@@ -550,6 +550,11 @@ int Service::operator()(int argc, char *argv[])
         }
     }
 
+    // start signal handler in main process (before persona switch because of
+    // socket)
+    signalHandler_ = std::make_shared<detail::SignalHandler>
+        (log_, *this, ::getpid(), optionalPath(ctrlPath));
+
     prePersonaSwitch();
     try {
         switchPersona(log_, config);
@@ -557,10 +562,6 @@ int Service::operator()(int argc, char *argv[])
         return EXIT_FAILURE;
     }
     postPersonaSwitch();
-
-    // start signal handler in main process
-    signalHandler_ = std::make_shared<detail::SignalHandler>
-        (log_, *this, ::getpid(), optionalPath(ctrlPath));
 
     // we are the one that terminates whole daemon!
     globalTerminate(true);
