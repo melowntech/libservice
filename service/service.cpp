@@ -21,6 +21,7 @@
 #include "detail/signalhandler.hpp"
 
 #include "utility/steady-clock.hpp"
+#include "utility/time.hpp"
 #include "utility/path.hpp"
 
 namespace fs = boost::filesystem;
@@ -735,6 +736,8 @@ void printSupplementaryGroups(std::ostream &os)
 
 void Service::processMonitor(std::ostream &output)
 {
+    auto uptime(Program::uptime());
+
     output
         << "Identity: " << Program::versionInfo()
         << "\nName: " << Program::name
@@ -747,7 +750,8 @@ void Service::processMonitor(std::ostream &output)
         << ")"
         << "\nUp-Since: " << formatDateTime(Program::upSince())
         << " (" << formatDateTime(Program::upSince(), true) << " GMT)"
-        << "\nUptime: " << Program::uptime().count()
+        << "\nUptime: " << uptime.count() << ' '
+        << utility::formatDuration(uptime)
         << "\n";
     monitor(output);
 }
