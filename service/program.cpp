@@ -64,6 +64,7 @@ Program::Program(const std::string &name, const std::string &version
                  , int flags)
     : name(name), version(version)
     , log_(dbglog::make_module(name)), flags_(flags)
+    , upSince_(std::time(nullptr))
 {
     try {
         std::locale("");
@@ -115,6 +116,16 @@ Program::configure(int argc, char *argv[]
         immediateExit(EXIT_FAILURE);
     }
     throw;
+}
+
+utility::Duration Program::uptime()
+{
+    return uptime_.duration();
+}
+
+std::time_t Program::upSince() const
+{
+    return upSince_;
 }
 
 namespace {

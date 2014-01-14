@@ -186,8 +186,8 @@ public:
     typedef lib::shared_ptr<CtrlConnection> pointer;
 
     CtrlConnection(Service &owner, asio::io_service &ios
-                   , SignalHandler &sh)
-        : owner_(owner), socket_(ios), sh_(sh)
+                   , SignalHandler &sh, dbglog::module &log)
+        : owner_(owner), socket_(ios), sh_(sh), log_(log)
     {}
 
     ~CtrlConnection() {}
@@ -206,6 +206,7 @@ private:
     Service &owner_;
     local::stream_protocol::socket socket_;
     SignalHandler &sh_;
+    dbglog::module &log_;
 
     boost::asio::streambuf input_;
     boost::asio::streambuf output_;
@@ -215,7 +216,7 @@ void SignalHandler::startAccept()
 {
     if (!ctrl_.is_open()) { return; }
 
-    auto con(lib::make_shared<CtrlConnection>(owner_, ios_, *this));
+    auto con(lib::make_shared<CtrlConnection>(owner_, ios_, *this, log_));
     ctrl_.async_accept
         (con->socket()
          , lib::bind(&SignalHandler::newCtrlConnection, this
@@ -234,7 +235,7 @@ void SignalHandler::newCtrlConnection(const boost::system::error_code &e
                                       , CtrlConnection::pointer con)
 {
     if (!e) {
-        LOG(info2) << "New control connection.";
+        LOG(info2, log_) << "New control connection.";
         con->startRead();
     }
 
@@ -245,7 +246,7 @@ void SignalHandler::newCtrlConnection(const boost::system::error_code &e
 
 void CtrlConnection::startRead()
 {
-    LOG(debug) << "starting read";
+    LOG(debug, log_) << "starting read";
 
     asio::async_read_until
          (socket_, input_, "\n"
@@ -260,14 +261,14 @@ void CtrlConnection::lineRead(const boost::system::error_code &e
 {
     if (e) {
         if (e.value() != asio::error::eof) {
-            LOG(err2) << "Control connection error: " << e;
+            LOG(err2, log_) << "Control connection error: " << e;
         } else {
-            LOG(info2) << "Control connection closed";
+            LOG(info2, log_) << "Control connection closed";
         }
         return;
     }
 
-    LOG(debug) << "Read: " << bytes << " bytes.";
+    LOG(debug, log_) << "Read: " << bytes << " bytes.";
 
     std::istream is(&input_);
     std::string line;
@@ -287,22 +288,30 @@ void CtrlConnection::lineRead(const boost::system::error_code &e
                 (cmdValue.begin() + 1, cmdValue.end())
         };
 
-        if (cmd.cmd == "logrotate") {
-            sh_.logRotate();
-            os << "log rotation scheduled\n";
-        } else if (cmd.cmd == "terminate") {
-            sh_.terminate();
-            os << "termination scheduled, bye\n";
-        } else if (cmd.cmd == "help") {
-            os << "logrotate      schedules log reopen event\n"
-               << "terminate      schedules termination event\n"
-               << "help           shows this help\n"
-                ;
+        try {
+            if (cmd.cmd == "logrotate") {
+                sh_.logRotate();
+                os << "log rotation scheduled\n";
+            } else if (cmd.cmd == "terminate") {
+                sh_.terminate();
+                os << "termination scheduled, bye\n";
+            } else if (cmd.cmd == "help") {
+                os << "logrotate      schedules log reopen event\n"
+                   << "terminate      schedules termination event\n"
+                   << "help           shows this help\n"
+                    ;
 
-            // let owner to append its own help
-            owner_.processCtrl(cmd, os);
-        } else {
-            owner_.processCtrl(cmd, os);
+                // let owner to append its own help
+                owner_.processCtrl(cmd, os);
+            } else {
+                owner_.processCtrl(cmd, os);
+            }
+        } catch (const std::exception &e) {
+            LOG(err3, log_)
+                << "Error during handling ctrl command: " << e.what();
+
+            // TODO: write something to the client?
+            return;
         }
     }
 
@@ -320,14 +329,14 @@ void CtrlConnection::handleWrite(const boost::system::error_code &e
 {
     if (e) {
         if (e.value() != asio::error::broken_pipe) {
-            LOG(err2) << "Control connection error: " << e;
+            LOG(err2, log_) << "Control connection error: " << e;
         } else {
-            LOG(info2) << "Control connection closed";
+            LOG(info2, log_) << "Control connection closed";
         }
         return;
     }
 
-    LOG(debug) << "Written: " << bytes << ".";
+    LOG(debug, log_) << "Written: " << bytes << ".";
     output_.consume(bytes);
 
     // ready to read next command

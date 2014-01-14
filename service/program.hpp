@@ -4,12 +4,15 @@
 #include <vector>
 #include <string>
 #include <ostream>
+#include <ctime>
 
 #include <boost/program_options.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/noncopyable.hpp>
 
 #include <dbglog/dbglog.hpp>
+
+#include "utility/duration.hpp"
 
 namespace service {
 
@@ -42,6 +45,10 @@ public:
     boost::filesystem::path logFile() const { return logFile_; }
 
     int flags() const { return flags_; }
+
+    utility::Duration uptime();
+
+    std::time_t upSince() const;
 
 protected:
     Program(const std::string &name, const std::string &version, int flags);
@@ -97,6 +104,9 @@ private:
 
     int flags_;
     boost::filesystem::path logFile_;
+
+    utility::DurationMeter uptime_;
+    std::time_t upSince_;
 };
 
 } // namespace service

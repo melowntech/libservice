@@ -4,6 +4,7 @@
 #include <system_error>
 #include <tuple>
 #include <cstring>
+#include <iomanip>
 
 #include <signal.h>
 #include <sys/types.h>
@@ -670,11 +671,83 @@ void Service::stat(std::ostream &output)
     output << "Service provides no statistics.\n";
 }
 
+namespace {
+
+std::string formatDateTime(const time_t t, bool gmt = false)
+{
+    std::tm tm;
+    if (gmt) {
+        ::gmtime_r(&t, &tm);
+    } else {
+        ::localtime_r(&t, &tm);
+    }
+    char buf[128];
+    ::strftime(buf, sizeof(buf) - 1, "%Y-%m-%d %T", &tm);
+    return buf;
+}
+
+typedef std::vector< ::gid_t> GidList;
+
+GidList getSupplementaryGroups()
+{
+    auto size(::getgroups(0, nullptr));
+    if (size == -1) {
+        std::system_error e(errno, std::system_category());
+        LOG(err3)
+            << "Cannot determine supplemetary groups of process: "
+            << "<" << e.code() << ", " << e.what() << ">.";
+        throw e;
+    }
+
+    GidList list;
+    list.resize(size);
+    auto nsize(::getgroups(size, list.data()));
+
+    if (nsize == -1) {
+        std::system_error e(errno, std::system_category());
+        LOG(err3)
+            << "Cannot determine supplemetary groups of process: "
+            << "<" << e.code() << ", " << e.what() << ">.";
+        throw e;
+    }
+    if (nsize < size) {
+        // limit
+        list.resize(nsize);
+    }
+
+    return list;
+}
+
+void printSupplementaryGroups(std::ostream &os)
+{
+    try {
+        auto first(true);
+        for (auto gid : getSupplementaryGroups()) {
+            if (first) { first = false; } else { os << ' '; }
+            os << gid;
+        }
+    } catch (const std::exception &e) {
+        os << "?";
+    }
+}
+
+} // namespace
+
 void Service::processMonitor(std::ostream &output)
 {
     output
         << "Identity: " << Program::versionInfo()
-        << "\nPid: " << ::getpid()
+        << "\nName: " << Program::name
+        << "\nVersion: " << Program::version
+        << "\nPid: " << ::getpid() << " (" << ::getppid() << ")"
+        << "\nPersona: " << ::getuid() << " " << ::getgid() << " (";
+    printSupplementaryGroups(output);
+
+    output
+        << ")"
+        << "\nUp-Since: " << formatDateTime(Program::upSince())
+        << " (" << formatDateTime(Program::upSince(), true) << " GMT)"
+        << "\nUptime: " << Program::uptime().count()
         << "\n";
     monitor(output);
 }
