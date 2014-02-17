@@ -23,7 +23,13 @@ int Cmdline::operator()(int argc, char *argv[])
         return e.code;
     }
 
-    int code = run();
+    int code = 0;
+
+    try {
+        code = run();
+    } catch (const immediate_exit &e) {
+        code = e.code;
+    }
 
     if (code && !noExcessiveLogging()) {
         LOG(err4, log_) << "Terminated with error " << code << '.';

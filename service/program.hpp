@@ -31,6 +31,7 @@ inline void immediateExit(int code) { throw immediate_exit(code); }
 constexpr int DISABLE_CONFIG_HELP = 0x01;
 constexpr int ENABLE_UNRECOGNIZED_OPTIONS = 0x02;
 constexpr int DISABLE_EXCESSIVE_LOGGING = 0x04;
+constexpr int SHOW_LICENCE_INFO = 0x08;
 
 class Program : boost::noncopyable {
 public:
@@ -95,6 +96,25 @@ protected:
     bool noExcessiveLogging() const {
         return flags_ & DISABLE_EXCESSIVE_LOGGING;
     }
+
+    /** Return copyright notice (used in `--version' too).
+     */
+    virtual std::string copyright() const;
+
+    /** Return licence (empty by default).
+     */
+    virtual std::string licence() const;
+
+    /** Licence holder (us by default).
+     */
+    virtual std::string licensee() const;
+
+    /** Check whether this program is licensed to run.
+     *
+     * SHOW unlicensed use info and THROW immediate_exit if unlicensed use is
+     * detected.
+     */
+    virtual void licenceCheck() const;
 
 private:
     po::variables_map

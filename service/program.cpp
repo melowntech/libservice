@@ -150,6 +150,29 @@ void Program::preNotifyHook(const po::variables_map &) {}
 // nothing to do here
 void Program::preConfigHook(const po::variables_map &) {}
 
+// Default copyright.
+std::string Program::copyright() const
+{
+    return R"RAW(Copyright (C) 2011-2014 Citationtech, SE
+All rights reserved.)RAW";
+}
+
+// Default licence.
+std::string Program::licence() const
+{
+    return R"RAW(This is a proprietary software. For internal purposes only.
+Not to be redistributed.)RAW";
+}
+
+// Default licence.
+std::string Program::licensee() const
+{
+    return "Citationtech, SE";
+}
+
+// Default licence check.
+void Program::licenceCheck() const {}
+
 po::variables_map
 Program::configureImpl(int argc, char *argv[]
                        , po::options_description genericCmdline
@@ -163,6 +186,7 @@ Program::configureImpl(int argc, char *argv[]
     genericCmdline.add_options()
         ("help", "produce help message")
         ("version,v", "display version and terminate")
+        ("licence", "display terms of licence")
         ("config,f", po::value<std::vector<std::string> >()
          , "path to configuration file; when using multiple config files "
          "first occurrence of option wins")
@@ -213,7 +237,18 @@ Program::configureImpl(int argc, char *argv[]
     po::store(parsed, vm);
 
     if (vm.count("version")) {
-        std::cout << versionInfo() << std::endl;
+        std::cout << versionInfo() << std::endl
+                  << copyright() << std::endl;
+            ;
+        immediateExit(EXIT_SUCCESS);
+    }
+
+    if (vm.count("licence")) {
+        std::cout << copyright() << std::endl
+                  << std::endl
+                  << "Licensed to " << licensee() << std::endl
+                  << std::endl
+                  << licence() << std::endl;
         immediateExit(EXIT_SUCCESS);
     }
 
@@ -265,6 +300,8 @@ Program::configureImpl(int argc, char *argv[]
 
         immediateExit(EXIT_SUCCESS);
     }
+
+    licenceCheck();
 
     // allow derived class to hook here before calling notify and configure.
     preConfigHook(vm);
@@ -338,6 +375,12 @@ Program::configureImpl(int argc, char *argv[]
         }
 
         configure(un);
+    }
+
+    if (flags() & SHOW_LICENCE_INFO) {
+        LOG(info4)
+            << "This build of " << Program::name << " is licensed to "
+            << licensee() << ".\n" << copyright() << '\n';
     }
 
     return vm;
