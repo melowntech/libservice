@@ -154,7 +154,7 @@ void Program::preConfigHook(const po::variables_map &) {}
 std::string Program::copyright() const
 {
     return R"RAW(Copyright (C) 2011-2014 Citationtech, SE
-All rights reserved.)RAW";
+Strakonicka 1199/2d, 150 00 Praha 5, Czech Republic)RAW";
 }
 
 // Default licence.
