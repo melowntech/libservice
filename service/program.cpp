@@ -10,11 +10,9 @@
 
 #include <boost/filesystem.hpp>
 
-#include "program.hpp"
+#include "utility/buildsys.hpp"
 
-#ifndef BUILDSYS_HOSTNAME
-#define "unknown"
-#endif
+#include "program.hpp"
 
 #ifdef BUILDSYS_CUSTOMER
 #define LOCAL_BUILDSYS_CUSTOMER_INFO " for " BUILDSYS_CUSTOMER
@@ -86,8 +84,9 @@ std::string Program::versionInfo() const
 {
     std::ostringstream os;
     os << name << ' ' << version
-       << (" (built on " __DATE__ " " __TIME__ " at " BUILDSYS_HOSTNAME
-           LOCAL_BUILDSYS_CUSTOMER_INFO ")");
+       << (" (built on " __DATE__ " " __TIME__ " at ")
+       << utility::buildsys::Hostname
+       << (LOCAL_BUILDSYS_CUSTOMER_INFO ")");
     return os.str();
 }
 
