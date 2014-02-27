@@ -160,7 +160,8 @@ Strakonicka 1199/2d, 150 00 Praha 5, Czech Republic)RAW";
 // Default licence.
 std::string Program::licence() const
 {
-    return R"RAW(This is a proprietary software. For internal purposes only.
+    return R"RAW(
+This is a proprietary software. For internal purposes only.
 Not to be redistributed.)RAW";
 }
 
@@ -247,7 +248,6 @@ Program::configureImpl(int argc, char *argv[]
         std::cout << copyright() << std::endl
                   << std::endl
                   << "Licensed to " << licensee() << std::endl
-                  << std::endl
                   << licence() << std::endl;
         immediateExit(EXIT_SUCCESS);
     }
