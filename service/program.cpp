@@ -379,7 +379,8 @@ Program::configureImpl(int argc, char *argv[]
     if (flags() & SHOW_LICENCE_INFO) {
         LOG(info4)
             << "This build of " << Program::name << " is licensed to "
-            << licensee() << ".\n" << copyright() << '\n';
+            << licensee() << ", subject to license agreement.\n"
+            << copyright() << '\n';
     }
 
     return vm;
