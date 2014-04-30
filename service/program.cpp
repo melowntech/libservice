@@ -203,6 +203,8 @@ Program::configureImpl(int argc, char *argv[]
          , "enable console logging")
         ("log.timePrecision", po::value<unsigned short>()->default_value(0)
          , "set logged time sub-second precision (0-6 decimals)")
+        ("log.file.truncate", po::value<bool>()->default_value(false)
+         , "truncate log file on startup")
         ;
 
     po::options_description hiddenCmdline("hidden command line options");
@@ -338,6 +340,10 @@ Program::configureImpl(int argc, char *argv[]
         // NB: notify(vm) not called yet => logFile_ is not set!
         logFile_ = absolute(vm["log.file"].as<boost::filesystem::path>());
         dbglog::log_file(logFile_.string());
+
+        if (vm["log.file.truncate"].as<bool>()) {
+            dbglog::log_file_truncate();
+        }
     }
 
     // enable/disable log console if set
