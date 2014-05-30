@@ -17,4 +17,4 @@ add_library(service STATIC ${service_SOURCES})
 buildsys_library(service)
 
 target_link_libraries(service ${MODULE_LIBRARIES})
-target_compile_definitions(service PRIVATE ${MODULE_DEFINITIONS})
+buildsys_target_compile_definitions(service ${MODULE_DEFINITIONS})
