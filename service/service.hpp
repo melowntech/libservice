@@ -80,8 +80,12 @@ protected:
     virtual void preConfigHook(const po::variables_map &vars);
 
     /** Code that will be run under original persona before persona is switched.
+     *
+     *  Returns flag whether original persona should be regainable:
+     *      true -> use seteuid/setegid
+     *      false -> use setuid/setgid
      */
-    virtual void prePersonaSwitch() {}
+    virtual bool prePersonaSwitch() { return false; }
 
     /** Code that will be run under new persona after persona is switched.
      */

@@ -38,10 +38,15 @@ Service::~Service()
 
 namespace {
 
-void switchPersona(dbglog::module &log, const Service::Config &config)
+void switchPersona(dbglog::module &log, const Service::Config &config
+                   , bool privilegesRegainable)
 {
     const auto &username(config.username);
     const auto &groupname(config.groupname);
+
+    // choose proper uid/gid setter
+    auto& uidSetter(privilegesRegainable ? ::seteuid : ::setuid);
+    auto& gidSetter(privilegesRegainable ? ::setegid : ::setgid);
 
     bool switchUid(false);
     bool switchGid(false);
@@ -85,7 +90,7 @@ void switchPersona(dbglog::module &log, const Service::Config &config)
 
     if (switchGid) {
         LOG(info3, log) << "Switching to gid <" << gid << ">.";
-        if (-1 == ::setgid(gid)) {
+        if (-1 == gidSetter(gid)) {
             std::system_error e(errno, std::system_category());
             LOG(fatal, log)
                 << "Cannot switch to gid <" << gid << ">: "
@@ -108,7 +113,7 @@ void switchPersona(dbglog::module &log, const Service::Config &config)
         }
 
         LOG(info3, log) << "Switching to uid <" << uid << ">.";
-        if (-1 == ::setuid(uid)) {
+        if (-1 == uidSetter(uid)) {
             std::system_error e(errno, std::system_category());
             LOG(fatal, log)
                 << "Cannot switch to uid <" << uid << ">: "
@@ -557,13 +562,15 @@ int Service::operator()(int argc, char *argv[])
     signalHandler_ = std::make_shared<detail::SignalHandler>
         (log_, *this, ::getpid(), optionalPath(ctrlPath));
 
-    prePersonaSwitch();
-    try {
-        switchPersona(log_, config);
-    } catch (const std::exception &e) {
-        return EXIT_FAILURE;
+    {
+        auto privilegesRegainable(prePersonaSwitch());
+        try {
+            switchPersona(log_, config, privilegesRegainable);
+        } catch (const std::exception &e) {
+            return EXIT_FAILURE;
+        }
+        postPersonaSwitch();
     }
-    postPersonaSwitch();
 
     // we are the one that terminates whole daemon!
     globalTerminate(true);
