@@ -38,8 +38,8 @@ Service::~Service()
 
 namespace {
 
-void switchPersona(dbglog::module &log, const Service::Config &config
-                   , bool privilegesRegainable)
+Persona switchPersona(dbglog::module &log, const Service::Config &config
+                      , bool privilegesRegainable)
 {
     const auto &username(config.username);
     const auto &groupname(config.groupname);
@@ -50,10 +50,11 @@ void switchPersona(dbglog::module &log, const Service::Config &config
 
     bool switchUid(false);
     bool switchGid(false);
-    uid_t uid(-1);
-    gid_t gid(-1);
+    Persona persona;
+    persona.start.loadEffectivePersona();
+    persona.running = persona.start;
 
-    if (username.empty() && groupname.empty()) { return; }
+    if (username.empty() && groupname.empty()) { return persona; }
     LOG(info3, log)
         << "Trying to run under " << username << ":" << groupname << ".";
     if (!username.empty()) {
@@ -66,8 +67,8 @@ void switchPersona(dbglog::module &log, const Service::Config &config
         }
 
         // get uid and gid
-        uid = pwd->pw_uid;
-        gid = pwd->pw_gid;
+        persona.running.uid = pwd->pw_uid;
+        persona.running.gid = pwd->pw_gid;
         switchUid = switchGid = true;
     }
 
@@ -79,21 +80,21 @@ void switchPersona(dbglog::module &log, const Service::Config &config
                 << "> present on the system.";
             throw;
         }
-        gid = gr->gr_gid;
+        persona.running.gid = gr->gr_gid;
         switchGid = true;
     }
 
     // change log file owner to uid/gid before persona change
-    dbglog::log_file_owner(uid, gid);
+    dbglog::log_file_owner(persona.running.uid, persona.running.gid);
 
     // TODO: check whether we do not run under root!
 
     if (switchGid) {
-        LOG(info3, log) << "Switching to gid <" << gid << ">.";
-        if (-1 == gidSetter(gid)) {
+        LOG(info3, log) << "Switching to gid <" << persona.running.gid << ">.";
+        if (-1 == gidSetter(persona.running.gid)) {
             std::system_error e(errno, std::system_category());
             LOG(fatal, log)
-                << "Cannot switch to gid <" << gid << ">: "
+                << "Cannot switch to gid <" << persona.running.gid << ">: "
                 << "<" << e.code() << ", " << e.what() << ">.";
             throw e;
         }
@@ -103,7 +104,7 @@ void switchPersona(dbglog::module &log, const Service::Config &config
         LOG(info3, log)
             << "Setting supplementary groups for user <"
             << username << ">.";
-        if (-1 == ::initgroups(username.c_str(), gid)) {
+        if (-1 == ::initgroups(username.c_str(), persona.running.gid)) {
             std::system_error e(errno, std::system_category());
             LOG(fatal, log)
                 << "Cannot initialize supplementary groups for user <"
@@ -112,11 +113,11 @@ void switchPersona(dbglog::module &log, const Service::Config &config
             throw e;
         }
 
-        LOG(info3, log) << "Switching to uid <" << uid << ">.";
-        if (-1 == uidSetter(uid)) {
+        LOG(info3, log) << "Switching to uid <" << persona.running.uid << ">.";
+        if (-1 == uidSetter(persona.running.uid)) {
             std::system_error e(errno, std::system_category());
             LOG(fatal, log)
-                << "Cannot switch to uid <" << uid << ">: "
+                << "Cannot switch to uid <" << persona.running.uid << ">: "
                 << "<" << e.code() << ", " << e.what() << ">.";
             throw e;
         }
@@ -124,6 +125,8 @@ void switchPersona(dbglog::module &log, const Service::Config &config
 
     LOG(info3, log)
         << "Run under " << username << ":" << groupname << ".";
+
+    return persona;
 }
 
 struct SigDef {
@@ -565,7 +568,7 @@ int Service::operator()(int argc, char *argv[])
     {
         auto privilegesRegainable(prePersonaSwitch());
         try {
-            switchPersona(log_, config, privilegesRegainable);
+            persona_ = switchPersona(log_, config, privilegesRegainable);
         } catch (const std::exception &e) {
             return EXIT_FAILURE;
         }

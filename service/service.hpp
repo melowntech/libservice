@@ -3,9 +3,13 @@
 
 #include <memory>
 
+#include <boost/optional.hpp>
+
 #include "utility/runnable.hpp"
+#include "utility/identity.hpp"
 
 #include "program.hpp"
+#include "persona.hpp"
 
 namespace service {
 
@@ -55,6 +59,8 @@ public:
 
     void processMonitor(std::ostream &output);
 
+    boost::optional<Persona> getPersona() const { return persona_; }
+
 protected:
     friend class detail::SignalHandler;
 
@@ -99,6 +105,8 @@ protected:
 
 private:
     bool daemonize_;
+
+    boost::optional<Persona> persona_;
 
     std::shared_ptr<detail::SignalHandler> signalHandler_;
 };
