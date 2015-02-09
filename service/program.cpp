@@ -8,9 +8,11 @@
 #include <set>
 #include <locale>
 
+#include <boost/format.hpp>
 #include <boost/filesystem.hpp>
 
 #include "utility/buildsys.hpp"
+#include "utility/path.hpp"
 
 #include "program.hpp"
 
@@ -204,6 +206,9 @@ Program::configureImpl(int argc, char *argv[]
         ("log.timePrecision", po::value<unsigned short>()->default_value(0)
          , "set logged time sub-second precision (0-6 decimals)")
         ("log.file.truncate", "truncate log file on startup")
+        ("log.file.archive"
+         , "archive existing log file (adds last modified as an extension) "
+         "and start with new one; overrides log.file.truncate")
         ;
 
     po::options_description hiddenCmdline("hidden command line options");
@@ -336,11 +341,32 @@ Program::configureImpl(int argc, char *argv[]
 
     // set log file if set
     if (vm.count("log.file")) {
+        bool archive(vm.count("log.file.archive"));
+        bool truncate(vm.count("log.file.truncate"));
+
         // NB: notify(vm) not called yet => logFile_ is not set!
         logFile_ = absolute(vm["log.file"].as<boost::filesystem::path>());
-        dbglog::log_file(logFile_.string());
 
-        if (vm.count("log.file.truncate")) {
+        if (archive) {
+            boost::system::error_code ec;
+            auto lastModified
+                (boost::filesystem::last_write_time(logFile_, ec));
+            if (!ec) {
+                // file exists and we have last modification time -> rename
+                boost::filesystem::rename
+                    (logFile_
+                     , utility::addExtension
+                     (logFile_, str(boost::format(".%d") % lastModified))
+                     , ec);
+            }
+
+            // force truncate (we do not know who is writing to the file as
+            // well)
+            truncate = true;
+        }
+
+        dbglog::log_file(logFile_.string());
+        if (truncate) {
             dbglog::log_file_truncate();
         }
     }
