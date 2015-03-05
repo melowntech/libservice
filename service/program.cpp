@@ -192,8 +192,14 @@ Program::configureImpl(int argc, char *argv[]
         ("config,f", po::value<std::vector<std::string> >()
          , "path to configuration file; when using multiple config files "
          "first occurrence of option wins")
-        ("help-all", "show help for both command line and config file")
+        ("help-all", "show help for both command line and config file; "
+         "if program provides detailed help information it is shown as well")
         ;
+
+    for (const auto &h : listHelps()) {
+        genericCmdline.add_options()
+            (("help-" + h).c_str(), ("help for " + h).c_str());
+    }
 
     genericConfig.add_options()
         ("log.mask", po::value<dbglog::mask>()
@@ -232,9 +238,22 @@ Program::configureImpl(int argc, char *argv[]
 
     // parse cmdline
     auto parser(po::command_line_parser(argc, argv).options(all)
-                 .positional(positionals).extra_parser(helpParser));
+                 .positional(positionals));
     if (flags_ & ENABLE_UNRECOGNIZED_OPTIONS) {
         parser.allow_unregistered();
+    }
+
+    // add extra parser if valid
+    if (auto extra = extraParser()) {
+        parser.extra_parser
+            ([=](const std::string &s) -> std::pair<std::string, std::string>
+             {
+                 auto res(helpParser(s));
+                 if (!res.first.empty()) { return res; }
+                 return extra(s);
+             });
+    } else {
+        parser.extra_parser(helpParser);
     }
 
     auto parsed(parser.run());
@@ -279,6 +298,11 @@ Program::configureImpl(int argc, char *argv[]
 
         helps.erase("all");
         if (helps.empty()) {
+            for (const auto &h : listHelps()) {
+                std::cout << '\n';
+                help(std::cout, h);
+            }
+
             immediateExit(EXIT_SUCCESS);
         }
         std::cout << '\n';
@@ -381,13 +405,6 @@ Program::configureImpl(int argc, char *argv[]
             (vm["log.timePrecision"].as<unsigned short>());
     }
 
-    // allow derived class to hook here before calling notify and configure.
-    preNotifyHook(vm);
-
-    po::notify(vm);
-
-    configure(vm);
-
     if (flags_ & ENABLE_UNRECOGNIZED_OPTIONS) {
         /* same as collect_unrecognized(parsed.options, po::include_positional)
          * except only unknown positionals are collected
@@ -404,8 +421,21 @@ Program::configureImpl(int argc, char *argv[]
            }
         }
 
-        configure(un);
+        // let the implementation to work with the unrecongized options
+        if (auto p = configure(vm, un)) {
+            auto parser(po::command_line_parser(un)
+                        .options(p->options)
+                        .positional(p->positional));
+
+            auto parsed(parser.run());
+            po::store(parsed, vm);
+        }
     }
+
+    // allow derived class to hook here before calling notify and configure.
+    preNotifyHook(vm);
+    po::notify(vm);
+    configure(vm);
 
     if (flags() & SHOW_LICENCE_INFO) {
         LOG(info4)

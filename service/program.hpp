@@ -9,6 +9,7 @@
 #include <boost/program_options.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/noncopyable.hpp>
+#include <boost/optional.hpp>
 
 #include <dbglog/dbglog.hpp>
 
@@ -32,6 +33,17 @@ constexpr int DISABLE_CONFIG_HELP = 0x01;
 constexpr int ENABLE_UNRECOGNIZED_OPTIONS = 0x02;
 constexpr int DISABLE_EXCESSIVE_LOGGING = 0x04;
 constexpr int SHOW_LICENCE_INFO = 0x08;
+
+struct UnrecognizedParser {
+    UnrecognizedParser(const std::string &help)
+        : options(help)
+    {}
+
+    po::options_description options;
+    po::positional_options_description positional;
+
+    typedef boost::optional<UnrecognizedParser> optional;
+};
 
 class Program : boost::noncopyable {
 public:
@@ -60,7 +72,21 @@ protected:
 
     virtual void configure(const po::variables_map &vars) = 0;
 
+    /** Called if there were any unrecognized options. Allows us to parse them
+     *  and return extra parser run on unrecongized options.
+     */
+    virtual UnrecognizedParser::optional
+    configure(const po::variables_map &vars
+              , const std::vector<std::string> &unrecognized);
+
+    /** Original version of the function above. Gets called when configure(vars,
+     *  unrecognized) is not overridden.
+     */
     virtual void configure(const std::vector<std::string> &unrecognized) = 0;
+
+    /** Sets extra parser. Not used if function is empty.
+     */
+    virtual po::ext_parser extraParser() { return {}; }
 
     /** Produces help for *what*.
      *  Returns false if help for *what* is not supported.
@@ -73,6 +99,11 @@ protected:
      */
     virtual bool help(std::ostream &out, const std::string &what)
         const { (void) out; (void) what; return false; }
+
+    /** Returns list of available help information.
+     *  Used in --help-all.
+     */
+    virtual std::vector<std::string> listHelps() const { return {}; }
 
     dbglog::module log_;
 
@@ -128,6 +159,16 @@ private:
     utility::DurationMeter uptime_;
     std::time_t upSince_;
 };
+
+// inlines
+
+inline UnrecognizedParser::optional
+Program::configure(const po::variables_map&
+                   , const std::vector<std::string> &unrecognized)
+{
+    configure(unrecognized);
+    return {};
+}
 
 } // namespace service
 

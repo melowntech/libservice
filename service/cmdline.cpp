@@ -38,7 +38,7 @@ int Cmdline::operator()(int argc, char *argv[])
     return code;
 }
 
-void Cmdline::configure(const std::vector<std::string> &)
+void Cmdline::configure(const std::vector<std::string>&)
 {
     throw po::error
         ("Program asked to collect unrecognized options "

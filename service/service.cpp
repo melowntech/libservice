@@ -629,7 +629,7 @@ void Service::globalTerminate(bool value, long pid)
     signalHandler_->globalTerminate(value, pid);
 }
 
-void Service::configure(const std::vector<std::string> &)
+void Service::configure(const std::vector<std::string>&)
 {
     throw po::error
         ("Program asked to collect unrecognized options "
