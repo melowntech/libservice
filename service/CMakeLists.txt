@@ -11,6 +11,8 @@ set(service_SOURCES
     detail/signalhandler.hpp detail/signalhandler.cpp
     cmdline.hpp cmdline.cpp
     pidfile.hpp pidfile.cpp
+
+    runninguntilsignalled.hpp runninguntilsignalled.cpp
 )
 
 add_library(service STATIC ${service_SOURCES})
