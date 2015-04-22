@@ -154,7 +154,7 @@ void Program::preConfigHook(const po::variables_map &) {}
 // Default copyright.
 std::string Program::copyright() const
 {
-    return R"RAW(Copyright (C) 2011-2014 Citationtech, SE
+    return R"RAW(Copyright (C) 2011-2015 Citationtech, SE
 Strakonicka 1199/2d, 150 00 Praha 5, Czech Republic)RAW";
 }
 
