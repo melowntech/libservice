@@ -5,6 +5,7 @@
 #include <string>
 #include <ostream>
 #include <ctime>
+ #include <functional>
 
 #include <boost/program_options.hpp>
 #include <boost/filesystem/path.hpp>
@@ -35,12 +36,16 @@ constexpr int DISABLE_EXCESSIVE_LOGGING = 0x04;
 constexpr int SHOW_LICENCE_INFO = 0x08;
 
 struct UnrecognizedParser {
-    UnrecognizedParser(const std::string &help)
-        : options(help)
+    typedef std::function<void(const po::variables_map&)> Configure;
+
+    UnrecognizedParser(const std::string &help
+                       , Configure configure = Configure())
+        : options(help), configure(configure)
     {}
 
     po::options_description options;
     po::positional_options_description positional;
+    Configure configure;
 
     typedef boost::optional<UnrecognizedParser> optional;
 };

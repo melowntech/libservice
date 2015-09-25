@@ -429,6 +429,9 @@ Program::configureImpl(int argc, char *argv[]
 
             auto parsed(parser.run());
             po::store(parsed, vm);
+
+            // run configure handler if defined
+            if (p->configure) { p->configure(vm); }
         }
     }
 
