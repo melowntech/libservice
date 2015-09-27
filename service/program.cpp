@@ -405,6 +405,8 @@ Program::configureImpl(int argc, char *argv[]
             (vm["log.timePrecision"].as<unsigned short>());
     }
 
+    boost::optional<UnrecognizedParser> unrParser;
+
     if (flags_ & ENABLE_UNRECOGNIZED_OPTIONS) {
         /* same as collect_unrecognized(parsed.options, po::include_positional)
          * except only unknown positionals are collected
@@ -422,16 +424,15 @@ Program::configureImpl(int argc, char *argv[]
         }
 
         // let the implementation to work with the unrecongized options
-        if (auto p = configure(vm, un)) {
+        auto p(configure(vm, un));
+        if (p) {
             auto parser(po::command_line_parser(un)
                         .options(p->options)
                         .positional(p->positional));
 
             auto parsed(parser.run());
             po::store(parsed, vm);
-
-            // run configure handler if defined
-            if (p->configure) { p->configure(vm); }
+            unrParser = boost::in_place(*p);
         }
     }
 
@@ -439,6 +440,9 @@ Program::configureImpl(int argc, char *argv[]
     preNotifyHook(vm);
     po::notify(vm);
     configure(vm);
+
+    // and configure unrecognized parser if used
+    if (unrParser->configure) { unrParser->configure(vm); }
 
     if (flags() & SHOW_LICENCE_INFO) {
         LOG(info4)
