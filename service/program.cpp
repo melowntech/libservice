@@ -442,7 +442,7 @@ Program::configureImpl(int argc, char *argv[]
     configure(vm);
 
     // and configure unrecognized parser if used
-    if (unrParser->configure) { unrParser->configure(vm); }
+    if (unrParser && (unrParser->configure)) { unrParser->configure(vm); }
 
     if (flags() & SHOW_LICENCE_INFO) {
         LOG(info4)
