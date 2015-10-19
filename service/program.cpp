@@ -375,7 +375,8 @@ Program::configureImpl(int argc, char *argv[]
             try {
                 f.open(cfg.c_str());
                 f.exceptions(std::ifstream::badbit);
-                auto parsed(po::parse_config_file(f, configs));
+                auto parsed(po::parse_config_file(f, configs
+                            , flags_ & ENABLE_CONFIG_UNRECOGNIZED_OPTIONS));
                 store(parsed, vm);
                 f.close();
 
