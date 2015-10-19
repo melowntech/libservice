@@ -5,7 +5,8 @@
 #include <string>
 #include <ostream>
 #include <ctime>
- #include <functional>
+#include <functional>
+#include <set>
 
 #include <boost/program_options.hpp>
 #include <boost/filesystem/path.hpp>
@@ -34,6 +35,9 @@ constexpr int DISABLE_CONFIG_HELP = 0x01;
 constexpr int ENABLE_UNRECOGNIZED_OPTIONS = 0x02;
 constexpr int DISABLE_EXCESSIVE_LOGGING = 0x04;
 constexpr int SHOW_LICENCE_INFO = 0x08;
+constexpr int ENABLE_CONFIG_UNRECOGNIZED_OPTIONS = 0x10;
+
+struct UnrecognizedOptions;
 
 struct UnrecognizedParser {
     typedef std::function<void(const po::variables_map&)> Configure;
@@ -82,12 +86,19 @@ protected:
      */
     virtual UnrecognizedParser::optional
     configure(const po::variables_map &vars
-              , const std::vector<std::string> &unrecognized);
+              , const UnrecognizedOptions &unrecognized);
 
     /** Original version of the function above. Gets called when configure(vars,
      *  unrecognized) is not overridden.
      */
     virtual void configure(const std::vector<std::string> &unrecognized) = 0;
+
+    /** Original version of the function above. Gets called when configure(vars,
+     *  unrecognized) is not overridden.
+     */
+    virtual UnrecognizedParser::optional
+    configure(const po::variables_map &vars
+              , const std::vector<std::string> &unrecognized);
 
     /** Sets extra parser. Not used if function is empty.
      */
@@ -165,6 +176,36 @@ private:
     std::time_t upSince_;
 };
 
+struct UnrecognizedOptions {
+    // cmdline stuff
+    typedef std::vector<std::string> OptionList;
+    OptionList cmdline;
+
+    // config stuff
+    typedef std::map<std::string, OptionList> ConfigOptions;
+    typedef std::vector<ConfigOptions> MultipleConfigOptions;
+    MultipleConfigOptions config;
+
+    typedef std::set<std::string> Keys;
+
+    /** Collects all keys used in the config.
+     */
+    Keys configKeys() const;
+
+    /** Returns first occurence of key in config.
+     *  Throws boost::program_options::required_value if not found.
+     *
+     *  Throws throw boost::program_options::multiple_values more than one
+     *  value is enoutered.
+     */
+    const std::string& singleConfigOption(const std::string &key) const;
+
+    /** Returns first occurence of key in config.
+     *  Throws boost::program_options::required_value if not found.
+     */
+    OptionList multiConfigOption(const std::string &key) const;
+};
+
 // inlines
 
 inline UnrecognizedParser::optional
@@ -173,6 +214,13 @@ Program::configure(const po::variables_map&
 {
     configure(unrecognized);
     return {};
+}
+
+inline UnrecognizedParser::optional
+Program::configure(const po::variables_map &vars
+                   , const UnrecognizedOptions &unrecognized)
+{
+    return configure(vars, unrecognized.cmdline);
 }
 
 } // namespace service

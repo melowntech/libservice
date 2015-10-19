@@ -26,6 +26,12 @@ namespace service {
 
 namespace {
 
+bool unrecognized(int flags)
+{
+    return (flags & (ENABLE_UNRECOGNIZED_OPTIONS
+                     | ENABLE_CONFIG_UNRECOGNIZED_OPTIONS));
+}
+
 struct Env {};
 
 inline std::ostream& operator<<(std::ostream &os, const Env &)
@@ -56,6 +62,27 @@ void setCLocale()
 
     std::locale::global(std::locale("C"));
     std::setlocale(LC_ALL, "C");
+}
+
+void add(UnrecognizedOptions &un
+         , const po::basic_parsed_options<char> &parsed)
+{
+    UnrecognizedOptions::ConfigOptions opts;
+    for (const auto &opt : parsed.options) {
+        if (!opt.unregistered) { continue; }
+        for (auto iot(opt.original_tokens.begin())
+                 , eot(opt.original_tokens.end());
+             iot != eot; ++iot)
+        {
+            auto key(*iot++);
+            opts[key].push_back(*iot);
+        }
+    }
+
+    // add only if non-empty
+    if (!opts.empty()) {
+        un.config.push_back(opts);
+    }
 }
 
 } // namespace
@@ -335,6 +362,8 @@ Program::configureImpl(int argc, char *argv[]
     // allow derived class to hook here before calling notify and configure.
     preConfigHook(vm);
 
+    UnrecognizedOptions un;
+
     if (vm.count("config")) {
         const auto &cfgs(vm["config"].as<std::vector<std::string> >());
         po::options_description configs(name);
@@ -346,8 +375,13 @@ Program::configureImpl(int argc, char *argv[]
             try {
                 f.open(cfg.c_str());
                 f.exceptions(std::ifstream::badbit);
-                store(po::parse_config_file(f, configs), vm);
+                auto parsed(po::parse_config_file(f, configs));
+                store(parsed, vm);
                 f.close();
+
+                if (flags_ & ENABLE_CONFIG_UNRECOGNIZED_OPTIONS) {
+                    add(un, parsed);
+                }
 
                 LOG(info3) << "Loaded configuration from <" << cfg << ">.";
             } catch(const std::ios_base::failure &e) {
@@ -408,25 +442,31 @@ Program::configureImpl(int argc, char *argv[]
     boost::optional<UnrecognizedParser> unrParser;
 
     if (flags_ & ENABLE_UNRECOGNIZED_OPTIONS) {
-        /* same as collect_unrecognized(parsed.options, po::include_positional)
-         * except only unknown positionals are collected
+        /* same as collect_unrecognized(parsed.options,
+         * po::include_positional) except only unknown positionals are
+         * collected
          */
-        std::vector<std::string> un;
         for (const auto &opt : parsed.options) {
             if (opt.unregistered
                 || ((opt.position_key >= 0)
                     && (positionals.name_for_position(opt.position_key)
                         == EXTRA_OPTIONS)))
-           {
-               un.insert(un.end(), opt.original_tokens.begin()
-                         , opt.original_tokens.end());
-           }
+            {
+                un.cmdline.insert(un.cmdline.end()
+                                  , opt.original_tokens.begin()
+                                  , opt.original_tokens.end());
+            }
         }
+    }
 
-        // let the implementation to work with the unrecongized options
+    if (unrecognized(flags_)) {
+        // let the implementation to work with the unrecognized cmdline/config
+        // options
         auto p(configure(vm, un));
         if (p) {
-            auto parser(po::command_line_parser(un)
+            // parse command line
+            // TODO: do the same for config
+            auto parser(po::command_line_parser(un.cmdline)
                         .options(p->options)
                         .positional(p->positional));
 
@@ -452,6 +492,50 @@ Program::configureImpl(int argc, char *argv[]
     }
 
     return vm;
+}
+
+UnrecognizedOptions::Keys UnrecognizedOptions::configKeys() const
+{
+    Keys k;
+    for (const auto &co : config) {
+        for (const auto &item : co) {
+            k.insert(item.first);
+        }
+    }
+    return k;
+}
+
+const std::string&
+UnrecognizedOptions::singleConfigOption(const std::string &key) const
+{
+    for (const auto &co : config) {
+        for (const auto &item : co) {
+            if (item.first != key) { continue; }
+            if (item.second.empty()) { continue; }
+            if (item.second.size() != 1) {
+                po::multiple_values e;
+                e.set_option_name(key);
+                throw e;
+            }
+            return item.second.front();
+        }
+    }
+
+    throw po::required_option(key);
+}
+
+UnrecognizedOptions::OptionList
+UnrecognizedOptions::multiConfigOption(const std::string &key) const
+{
+    for (const auto &co : config) {
+        for (const auto &item : co) {
+            if (item.first != key) { continue; }
+            if (item.second.empty()) { continue; }
+            return item.second;
+        }
+    }
+
+    throw po::required_option(key);
 }
 
 } // namespace service
