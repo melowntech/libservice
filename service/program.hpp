@@ -72,6 +72,8 @@ public:
 
     std::time_t upSince() const;
 
+    void defaultConfigFile(const boost::filesystem::path &defaultConfigFile);
+
 protected:
     Program(const std::string &name, const std::string &version, int flags);
 
@@ -174,6 +176,11 @@ private:
 
     utility::DurationMeter uptime_;
     std::time_t upSince_;
+
+    /** Optional path to default config. Used if set and no config file was
+     *  specified on the command line.
+     */
+    boost::optional<boost::filesystem::path> defaultConfigFile_;
 };
 
 struct UnrecognizedOptions {

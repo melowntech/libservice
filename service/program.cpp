@@ -156,6 +156,12 @@ std::time_t Program::upSince() const
     return upSince_;
 }
 
+void Program::defaultConfigFile(const boost::filesystem::path
+                                &defaultConfigFile)
+{
+    defaultConfigFile_ = defaultConfigFile;
+}
+
 namespace {
 
 std::pair<std::string, std::string> helpParser(const std::string& s)
@@ -364,8 +370,15 @@ Program::configureImpl(int argc, char *argv[]
 
     UnrecognizedOptions un;
 
+    // get list of config files or use default (if given)
+    std::vector<std::string> cfgs;
     if (vm.count("config")) {
-        const auto &cfgs(vm["config"].as<std::vector<std::string> >());
+        cfgs = vm["config"].as<std::vector<std::string> >();
+    } else if (defaultConfigFile_) {
+        cfgs.push_back(defaultConfigFile_->string());
+    }
+
+    if (!cfgs.empty()) {
         po::options_description configs(name);
         configs.add(genericConfig).add(config);
 
