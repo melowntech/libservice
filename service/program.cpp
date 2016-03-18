@@ -455,7 +455,7 @@ Program::configureImpl(int argc, char *argv[]
 
     boost::optional<UnrecognizedParser> unrParser;
 
-    if (flags_ & ENABLE_UNRECOGNIZED_OPTIONS) {
+    if (unrecognized(flags_)) {
         /* same as collect_unrecognized(parsed.options,
          * po::include_positional) except only unknown positionals are
          * collected
