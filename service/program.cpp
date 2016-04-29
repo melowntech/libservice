@@ -471,21 +471,38 @@ Program::configureImpl(int argc, char *argv[]
                                   , opt.original_tokens.end());
             }
         }
-    }
 
-    if (unrecognized(flags_)) {
         // let the implementation to work with the unrecognized cmdline/config
         // options
         auto p(configure(vm, un));
         if (p) {
             // parse command line
-            // TODO: do the same for config
             auto parser(po::command_line_parser(un.cmdline)
                         .options(p->options)
                         .positional(p->positional));
 
             auto parsed(parser.run());
             po::store(parsed, vm);
+
+            // process config
+            for (const auto &config : un.config) {
+                UnrecognizedOptions::OptionList opts;
+                for (const auto &item : config) {
+                    for (const auto &opt : item.second) {
+                        // NB: we are parsing config file like a cmdline -> we
+                        // need to add -- prefix to make it look like it comes
+                        // from cmdline
+                        opts.push_back("--" + item.first);
+                        opts.push_back(opt);
+                    }
+                }
+                auto parser(po::command_line_parser(opts)
+                            .options(p->options));
+
+                auto parsed(parser.run());
+                po::store(parsed, vm);
+            }
+
             unrParser = boost::in_place(*p);
         }
     }
