@@ -44,12 +44,13 @@ struct UnrecognizedParser {
 
     UnrecognizedParser(const std::string &help
                        , Configure configure = Configure())
-        : options(help), configure(configure)
+        : options(help), configure(configure), extraParser()
     {}
 
     po::options_description options;
     po::positional_options_description positional;
     Configure configure;
+    po::ext_parser extraParser;
 
     typedef boost::optional<UnrecognizedParser> optional;
 };
@@ -211,6 +212,8 @@ struct UnrecognizedOptions {
      *  Throws boost::program_options::required_value if not found.
      */
     OptionList multiConfigOption(const std::string &key) const;
+
+    UnrecognizedOptions() {}
 };
 
 // inlines

@@ -481,6 +481,11 @@ Program::configureImpl(int argc, char *argv[]
                         .options(p->options)
                         .positional(p->positional));
 
+            // add extra parser if valid
+            if (p->extraParser) {
+                parser.extra_parser(p->extraParser);
+            }
+
             auto parsed(parser.run());
             po::store(parsed, vm);
 
@@ -498,6 +503,11 @@ Program::configureImpl(int argc, char *argv[]
                 }
                 auto parser(po::command_line_parser(opts)
                             .options(p->options));
+
+                // add extra parser if valid
+                if (p->extraParser) {
+                    parser.extra_parser(p->extraParser);
+                }
 
                 auto parsed(parser.run());
                 po::store(parsed, vm);
