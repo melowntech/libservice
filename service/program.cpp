@@ -187,7 +187,7 @@ void Program::preConfigHook(const po::variables_map &) {}
 // Default copyright.
 std::string Program::copyright() const
 {
-    return R"RAW(Copyright (C) 2011-2016 Citationtech, SE
+    return R"RAW(Copyright (C) 2011-2016 Melown Technologies SE
 Strakonicka 1199/2d, 150 00 Praha 5, Czech Republic)RAW";
 }
 
@@ -202,7 +202,7 @@ Not to be redistributed.)RAW";
 // Default licence.
 std::string Program::licensee() const
 {
-    return "Citationtech, SE";
+    return "Melown Technologies SE";
 }
 
 // Default licence check.
