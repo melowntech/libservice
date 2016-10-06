@@ -76,6 +76,7 @@ void add(UnrecognizedOptions &un
         {
             auto key(*iot++);
             opts[key].push_back(*iot);
+            un.seenConfigKeys.push_back(key);
         }
     }
 

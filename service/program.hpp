@@ -194,6 +194,10 @@ struct UnrecognizedOptions {
     typedef std::vector<ConfigOptions> MultipleConfigOptions;
     MultipleConfigOptions config;
 
+    /** All keys seen in config all files (in order they have been read).
+     */
+    std::vector<std::string> seenConfigKeys;
+
     typedef std::set<std::string> Keys;
 
     /** Collects all keys used in the config.
