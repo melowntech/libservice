@@ -45,7 +45,9 @@ SignalHandler::~SignalHandler()
 
     // remove ctrl path if in main process
     if (ctrlPath_ && (::getpid() == mainPid_)) {
-        remove_all(*ctrlPath_);
+        // try to remove control socket, ignore failure
+        boost::system::error_code ec;
+        remove_all(*ctrlPath_, ec);
     }
 }
 
