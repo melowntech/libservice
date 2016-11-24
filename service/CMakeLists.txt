@@ -15,6 +15,9 @@ set(service_SOURCES
     runninguntilsignalled.hpp runninguntilsignalled.cpp
 )
 
+add_customer_sources("service" service_SOURCES
+  customer/program.{CUSTOMER}.cpp)
+
 add_library(service STATIC ${service_SOURCES})
 buildsys_library(service)
 
