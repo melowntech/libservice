@@ -247,8 +247,11 @@ Program::configureImpl(int argc, char *argv[]
     }
 
     // parse cmdline
-    auto parser(po::command_line_parser(argc, argv).options(all)
-                 .positional(positionals));
+    auto parser(po::command_line_parser(argc, argv)
+                .style(po::command_line_style::default_style
+                       & ~po::command_line_style::allow_guessing)
+                .options(all)
+                .positional(positionals));
     if (flags_ & ENABLE_UNRECOGNIZED_OPTIONS) {
         parser.allow_unregistered();
     }
