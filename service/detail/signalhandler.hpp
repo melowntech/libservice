@@ -105,6 +105,20 @@ private:
     std::size_t size_;
 };
 
+struct CtrlConfig {
+    fs::path path;
+    std::string username;
+    std::string group;
+    ::mode_t mode;
+
+    void configuration(po::options_description &cmdline
+                       , po::options_description &config);
+
+    void configure(const po::variables_map &vars);
+
+    CtrlConfig() : mode() {}
+};
+
 class CtrlConnection;
 
 class SignalHandler : boost::noncopyable
@@ -120,7 +134,7 @@ public:
     };
 
     SignalHandler(dbglog::module &log, Service &owner, pid_t mainPid
-                  , const boost::optional<fs::path> &ctrlPath);
+                  , const boost::optional<CtrlConfig> &ctrlConfig);
 
     ~SignalHandler();
 

@@ -1,3 +1,10 @@
+#include <pwd.h>
+#include <grp.h>
+#include <unistd.h>
+#include <sys/stat.h>
+
+#include <system_error>
+
 #include <boost/filesystem.hpp>
 
 #include "dbglog/dbglog.hpp"
@@ -7,9 +14,37 @@
 
 namespace service { namespace detail {
 
+::uid_t username2uid(const std::string &username)
+{
+    if (username.empty()) { return -1; }
+
+    auto pwd(::getpwnam(username.c_str()));
+    if (!pwd) {
+        LOGTHROW(err3, std::runtime_error)
+            << "There is no user <" << username
+            << "> present on the system.";
+    }
+
+    return pwd->pw_uid;
+}
+
+::gid_t group2uid(const std::string &groupname)
+{
+    if (groupname.empty()) { return -1; }
+
+    auto gr(::getgrnam(groupname.c_str()));
+    if (!gr) {
+        LOGTHROW(err3, std::runtime_error)
+            << "There is no group <" << groupname
+            << "> present on the system.";
+    }
+
+    return gr->gr_gid;
+}
+
 SignalHandler::SignalHandler(dbglog::module &log, Service &owner
                              , pid_t mainPid
-                             , const boost::optional<fs::path> &ctrlPath)
+                             , const boost::optional<CtrlConfig> &ctrlConfig)
     : signals_(ios_, SIGTERM, SIGINT, SIGHUP)
     , mem_(4096)
     , terminator_(mem_, 32)
@@ -23,15 +58,41 @@ SignalHandler::SignalHandler(dbglog::module &log, Service &owner
                  std::atomic<std::uint64_t>(0))
     , lastStatEvent_(0)
     , log_(log), owner_(owner), mainPid_(mainPid)
-    , ctrlPath_(ctrlPath), ctrl_(ios_)
+    , ctrl_(ios_)
 {
-    if (ctrlPath_) {
+    if (ctrlConfig) {
+        ctrlPath_ = ctrlConfig->path;
         local::stream_protocol::endpoint e(ctrlPath_->string());
         ctrl_.open(e.protocol());
         ctrl_.set_option(asio::socket_base::reuse_address(true));
         ctrl_.bind(e);
         ctrl_.listen();
-    };
+
+        // change owner
+        if (-1 == ::chown(ctrlConfig->path.c_str()
+                          , username2uid(ctrlConfig->username)
+                          , group2uid(ctrlConfig->group)))
+        {
+            std::system_error e(errno, std::system_category());
+            LOG(err3)
+                << "Canot change ownership of unix socket "
+                << ctrlConfig->path << ": <"
+                << e.code() << ", " << e.what() << ">.";
+            throw e;
+        }
+
+        // update permissions
+        if (ctrlConfig->mode) {
+            if (-1 == ::chmod(ctrlConfig->path.c_str(), ctrlConfig->mode)) {
+                std::system_error e(errno, std::system_category());
+                LOG(err3)
+                    << "Canot mode of unix socket "
+                    << ctrlConfig->path << ": <"
+                    << e.code() << ", " << e.what() << ">.";
+                throw e;
+            }
+        }
+    }
 
     signals_.add(SIGUSR1);
 
@@ -360,6 +421,43 @@ void SignalHandler::atFork(utility::AtFork::Event event)
         ios_.notify_fork(asio::io_service::fork_child);
         stopAccept();
         break;
+    }
+}
+
+struct ModeParser {
+    ::mode_t mode;
+};
+
+template<typename CharT, typename Traits>
+inline std::basic_istream<CharT, Traits>&
+operator>>(std::basic_istream<CharT, Traits> &is, ModeParser &m)
+{
+    is >> std::oct >> m.mode;
+    return is;
+}
+
+void CtrlConfig::configuration(po::options_description &cmdline
+                               , po::options_description &config)
+{
+    cmdline.add_options()
+        ("ctrl", po::value(&path)
+         , "Path to ctrl socket (honored only when pid file is used).")
+        ;
+
+    config.add_options()
+        ("ctrl.user", po::value(&username)
+         , "Change owner of ctrl socket if set.")
+        ("ctrl.group", po::value(&group)
+         , "Change group of ctrl socket if set.")
+        ("ctrl.mode", po::value<ModeParser>()
+         , "Change permissions of control socket if set.")
+        ;
+}
+
+void CtrlConfig::configure(const po::variables_map &vars)
+{
+    if (vars.count("ctrl.mode")) {
+        mode = vars["ctrl.mode"].as<ModeParser>().mode;
     }
 }
 

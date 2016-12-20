@@ -350,6 +350,12 @@ boost::optional<fs::path> optionalPath(const fs::path &path)
     return path;
 }
 
+boost::optional<detail::CtrlConfig> optional(const detail::CtrlConfig &cc)
+{
+    if (cc.path.empty()) { return boost::none; }
+    return cc;
+}
+
 } // namespace
 
 void Service::preConfigHook(const po::variables_map &vars)
@@ -389,7 +395,8 @@ int Service::operator()(int argc, char *argv[])
 
     Config config;
     fs::path pidFilePath;
-    fs::path ctrlPath;
+
+    detail::CtrlConfig ctrlConfig;
 
     try {
         po::options_description genericCmdline("command line options");
@@ -407,8 +414,6 @@ int Service::operator()(int argc, char *argv[])
              , "Do not close STDIN/OUT/ERR after forking to background.")
             ("pidfile", po::value(&pidFilePath)
              , "Path to pid file.")
-            ("ctrl", po::value(&ctrlPath)
-             , "Path to ctrl socket (honored only when pid file is used).")
             ("signal,s", po::value<std::string>()
              , "Signal to be sent to running instance: "
              "stop, logrotate, status. "
@@ -416,9 +421,13 @@ int Service::operator()(int argc, char *argv[])
              "of seconds to wait for running process to terminate.")
             ;
 
+        ctrlConfig.configuration(genericCmdline, genericConfig);
         config.configuration(genericCmdline, genericConfig);
 
         auto vm(Program::configure(argc, argv, genericCmdline, genericConfig));
+        ctrlConfig.configure(vm);
+        config.configure(vm);
+
         daemonize = vm.count("daemonize");
         daemonizeNochdir = vm.count("daemonize-nochdir");
         daemonizeNoclose = vm.count("daemonize-noclose");
@@ -432,14 +441,14 @@ int Service::operator()(int argc, char *argv[])
         // make sure pidfile is an absolute path
         if (!pidFilePath.empty()) {
             pidFilePath = absolute(pidFilePath);
-        } else if (!ctrlPath.empty()) {
+        } else if (!ctrlConfig.path.empty()) {
             LOG(fatal, log_)
                 << "Specified ctrl path without pid file.";
             return EXIT_FAILURE;
         }
 
-        if (!ctrlPath.empty()) {
-            ctrlPath = absolute(ctrlPath);
+        if (!ctrlConfig.path.empty()) {
+            ctrlConfig.path = absolute(ctrlConfig.path);
         }
     } catch (const immediate_exit &e) {
         return e.code;
@@ -553,17 +562,24 @@ int Service::operator()(int argc, char *argv[])
             LOG(fatal, log_) << "Cannot allocate pid file: " << e.what();
             return EXIT_FAILURE;
         }
-        if (!ctrlPath.empty()) {
+
+        if (!ctrlConfig.path.empty()) {
             // we need to remove file if exists
-            remove_all(ctrlPath);
-            LOG(info4, log_) << "Using control socket at " << ctrlPath << ".";
+            remove_all(ctrlConfig.path);
+            LOG(info4, log_)
+                << "Using control socket at " << ctrlConfig.path << ".";
+        }
+    } else {
+        if (!ctrlConfig.path.empty()) {
+            LOG(warn4, log_)
+                << "Option --ctrl makes sense only together with --pidfile.";
         }
     }
 
     // start signal handler in main process (before persona switch because of
     // socket)
     signalHandler_ = std::make_shared<detail::SignalHandler>
-        (log_, *this, ::getpid(), optionalPath(ctrlPath));
+        (log_, *this, ::getpid(), optional(ctrlConfig));
 
     {
         auto privilegesRegainable(prePersonaSwitch());
