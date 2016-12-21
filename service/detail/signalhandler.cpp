@@ -378,6 +378,9 @@ void CtrlConnection::lineRead(const boost::system::error_code &e
         }
     }
 
+    // terminate response block
+    os << '\4';
+
     asio::async_write
         (socket_
          , output_

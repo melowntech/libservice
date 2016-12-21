@@ -674,7 +674,7 @@ void Service::processCtrl(const CtrlCommand &cmd, std::ostream &output)
     } else if (cmd.cmd == "monitor") {
         processMonitor(output);
     } else if (!ctrl(cmd, output)) {
-        output << "command <" << cmd.cmd << "> not implemented\n";
+        output << "error: command <" << cmd.cmd << "> not implemented\n";
     }
 }
 
