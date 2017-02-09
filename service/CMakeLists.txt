@@ -1,5 +1,9 @@
-define_module(LIBRARY service
-  DEPENDS utility dbglog Boost_FILESYSTEM Boost_PROGRAM_OPTIONS Boost_SYSTEM
+# bump version here
+set(service_VERSION 1.6)
+
+define_module(LIBRARY service=${service_VERSION}
+  DEPENDS utility>=1.11 dbglog>=1.4
+  Boost_FILESYSTEM Boost_PROGRAM_OPTIONS Boost_SYSTEM
   # we need pthread_* stuff
   THREADS)
 
