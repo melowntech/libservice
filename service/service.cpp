@@ -344,12 +344,6 @@ extern "C" {
     }
 }
 
-boost::optional<fs::path> optionalPath(const fs::path &path)
-{
-    if (path.empty()) { return boost::none; }
-    return path;
-}
-
 boost::optional<detail::CtrlConfig> optional(const detail::CtrlConfig &cc)
 {
     if (cc.path.empty()) { return boost::none; }
