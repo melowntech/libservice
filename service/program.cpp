@@ -224,6 +224,7 @@ Program::configureImpl(int argc, char *argv[]
         ("help", "produce help message")
         ("version,v", "display version and terminate")
         ("licence", "display terms of licence")
+        ("license", "display terms of license")
         ("config,f", po::value<std::vector<std::string> >()
          , "path to configuration file; when using multiple config files "
          "first occurrence of option wins")
@@ -306,11 +307,14 @@ Program::configureImpl(int argc, char *argv[]
         immediateExit(EXIT_SUCCESS);
     }
 
-    if (vm.count("licence")) {
+    if (vm.count("licence") || vm.count("license")) {
         std::cout << copyright() << std::endl
-                  << std::endl
-                  << "Licensed to " << licensee() << std::endl
-                  << licence() << std::endl;
+                  << std::endl;
+        const auto licensedTo(licensee());
+        if (!licensedTo.empty()) {
+            std::cout << "Licensed to " << licensedTo << std::endl;
+        }
+        std::cout << licence() << std::endl;
         immediateExit(EXIT_SUCCESS);
     }
 
