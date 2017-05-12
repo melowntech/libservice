@@ -35,6 +35,7 @@
 
 #include <boost/format.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/utility/in_place_factory.hpp>
 
 #include "utility/buildsys.hpp"
 #include "utility/path.hpp"
