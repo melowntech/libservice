@@ -53,7 +53,7 @@ namespace service { namespace detail {
     return pwd->pw_uid;
 }
 
-::gid_t group2uid(const std::string &groupname)
+::gid_t group2gid(const std::string &groupname)
 {
     if (groupname.empty()) { return -1; }
 
@@ -96,7 +96,7 @@ SignalHandler::SignalHandler(dbglog::module &log, Service &owner
         // change owner
         if (-1 == ::chown(ctrlConfig->path.c_str()
                           , username2uid(ctrlConfig->username)
-                          , group2uid(ctrlConfig->group)))
+                          , group2gid(ctrlConfig->group)))
         {
             std::system_error e(errno, std::system_category());
             LOG(err3)
