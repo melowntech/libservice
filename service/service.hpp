@@ -128,7 +128,18 @@ protected:
 
     virtual void monitor(std::ostream &output);
 
+    /** Called on logrotate after log has been rotated.
+     *
+     * \param logFile path to current log file
+     */
+    virtual void logRotated(const boost::filesystem::path &logFile);
+
 private:
+    /** Called on log rotate event to re-open log file.
+     *  Makes call to logRotated().
+     */
+    void logRotate();
+
     bool daemonize_;
 
     boost::optional<Persona> persona_;

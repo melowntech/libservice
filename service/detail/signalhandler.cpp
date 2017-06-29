@@ -161,11 +161,7 @@ bool SignalHandler::process()
     {
         auto value(logRotateEvent_.load());
         if (value != lastLogRotateEvent_) {
-            LOG(info3, log_) << "Logrotate: <" << owner_.logFile() << ">.";
-            dbglog::log_file(owner_.logFile().string());
-            LOG(info4, log_)
-                << "Service " << owner_.name << '-' << owner_.version
-                << ": log rotated.";
+            owner_.logRotate();
             lastLogRotateEvent_ = value;
         }
     }

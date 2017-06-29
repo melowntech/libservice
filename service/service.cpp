@@ -810,4 +810,16 @@ void Service::Config::configure(const po::variables_map &vars)
     (void) vars;
 }
 
+void Service::logRotate()
+{
+    const auto lf(logFile());
+    LOG(info3, log_) << "Logrotate: <" << lf << ">.";
+    dbglog::log_file(lf.string());
+    LOG(info4, log_)
+        << "Service " << name << '-' << version << ": log rotated.";
+    logRotated(lf);
+}
+
+void Service::logRotated(const boost::filesystem::path&) {}
+
 } // namespace Service
