@@ -10,14 +10,22 @@ define_module(LIBRARY service=${service_VERSION}
 compile_with_hostname()
 
 set(service_SOURCES
-    program.hpp program.cpp
-    service.hpp service.cpp
-    detail/signalhandler.hpp detail/signalhandler.cpp
-    cmdline.hpp cmdline.cpp
-    pidfile.hpp pidfile.cpp
+  program.hpp program.cpp
+  cmdline.hpp cmdline.cpp
 
-    runninguntilsignalled.hpp runninguntilsignalled.cpp
-)
+  runninguntilsignalled.hpp runninguntilsignalled.cpp
+  )
+
+if(WIN32)
+  # windows
+else()
+  # posix
+  list(APPEND service_SOURCES
+    service.hpp service.cpp
+    pidfile.hpp pidfile.cpp
+    detail/signalhandler.hpp detail/signalhandler.cpp
+  )
+endif()
 
 add_customer_sources("service" service_SOURCES
   customer/program.{CUSTOMER}.cpp)

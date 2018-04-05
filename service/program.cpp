@@ -23,7 +23,6 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-#include <unistd.h>
 
 #include <cerrno>
 #include <cstdlib>
@@ -60,6 +59,22 @@ bool unrecognized(int flags)
 
 struct Env {};
 
+#ifdef _WIN32
+// windows
+
+inline std::ostream& operator<<(std::ostream &os, const Env &)
+{
+    return os;
+}
+
+void setCLocale()
+{
+    std::locale::global(std::locale("C"));
+}
+
+#else
+// posix
+
 inline std::ostream& operator<<(std::ostream &os, const Env &)
 {
     bool first(true);
@@ -89,6 +104,8 @@ void setCLocale()
     std::locale::global(std::locale("C"));
     std::setlocale(LC_ALL, "C");
 }
+
+#endif
 
 void add(UnrecognizedOptions &un
          , const po::basic_parsed_options<char> &parsed)
@@ -122,7 +139,7 @@ Program::Program(const std::string &name, const std::string &version
 {
     try {
         std::locale("");
-    } catch (const std::exception &e) {
+    } catch (const std::exception&) {
         LOG(warn3)
             << "Invalid locale settings in the environment (" << Env{} << "). "
             << "Falling back to \"C\" locale.";

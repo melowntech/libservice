@@ -23,6 +23,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
 #include <atomic>
 
 #include <boost/asio.hpp>
@@ -34,6 +35,23 @@
 namespace service {
 
 namespace asio = boost::asio;
+
+const char* signalName(int signo)
+{
+#ifndef WIN32
+    return ::strsignal(signo);
+#else
+    switch (signo) {
+    case SIGABRT: return "SIGABRT";
+    case SIGFPE: return "SIGFPE";
+    case SIGILL: return "SIGILL";
+    case SIGINT: return "SIGINT";
+    case SIGSEGV: return "SIGSEGV";
+    case SIGTERM: return "SIGTERM";
+    }
+    return "unknown";
+#endif
+}
 
 struct RunningUntilSignalled::Detail : boost::noncopyable {
     Detail()
@@ -70,7 +88,7 @@ void RunningUntilSignalled::Detail::signal
         return;
     }
 
-    auto signame(::strsignal(signo));
+    auto signame(signalName(signo));
 
     LOG(debug)
         << "RunningUntilSignalled received signal: <" << signo
