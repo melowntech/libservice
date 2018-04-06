@@ -26,6 +26,10 @@
 
 #include <atomic>
 
+#ifdef _WIN32
+#  include <SDKDDKVer.h>
+#endif
+
 #include <boost/asio.hpp>
 
 #include "dbglog/dbglog.hpp"
