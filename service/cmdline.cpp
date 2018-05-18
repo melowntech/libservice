@@ -37,6 +37,8 @@ Cmdline::~Cmdline()
 
 int Cmdline::operator()(int argc, char *argv[])
 {
+    setArgv0(argv[0]);
+
     dbglog::thread_id("main");
 
     try {

@@ -100,6 +100,8 @@ public:
 
     void defaultConfigFile(const boost::filesystem::path &defaultConfigFile);
 
+    const std::string& argv0() const { return argv0_; }
+
 protected:
     Program(const std::string &name, const std::string &version, int flags);
 
@@ -191,6 +193,8 @@ protected:
      */
     virtual void licenceCheck() const;
 
+    void setArgv0(const std::string &value) { argv0_ = value; }
+
 private:
     po::variables_map
     configureImpl(int argc, char *argv[]
@@ -207,6 +211,10 @@ private:
      *  specified on the command line.
      */
     boost::optional<boost::filesystem::path> defaultConfigFile_;
+
+    /** Extracted from argv[0]
+     */
+    std::string argv0_;
 };
 
 struct UnrecognizedOptions {
