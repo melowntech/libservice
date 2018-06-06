@@ -24,6 +24,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <string.h>
+
 #include <cerrno>
 #include <cstdlib>
 #include <iostream>
@@ -136,6 +138,7 @@ Program::Program(const std::string &name, const std::string &version
     : name(name), version(version)
     , log_(dbglog::make_module(name)), flags_(flags)
     , upSince_(std::time(nullptr))
+    , argv0_()
 {
     try {
         std::locale("");
@@ -178,6 +181,7 @@ Program::configure(int argc, char *argv[]
                    , const po::options_description &genericCmdline
                    , const po::options_description &genericConcig)
 {
+    argv0_ = argv[0];
     try {
         return configureImpl(argc, argv, genericCmdline, genericConcig);
     } catch (const po::error &e) {
@@ -204,6 +208,15 @@ void Program::defaultConfigFile(const boost::filesystem::path
                                 &defaultConfigFile)
 {
     defaultConfigFile_ = defaultConfigFile;
+}
+
+std::string Program::argv0() const
+{
+    if (!argv0_) {
+        LOGTHROW(err3, std::logic_error)
+            << "Pointer to argv[0] has not been bound yet.";
+    }
+    return argv0_;
 }
 
 namespace {

@@ -408,8 +408,6 @@ void Service::preConfigHook(const po::variables_map &vars)
 
 int Service::operator()(int argc, char *argv[])
 {
-    setArgv0(argv[0]);
-
     dbglog::thread_id("main");
 
     bool daemonize(false);
