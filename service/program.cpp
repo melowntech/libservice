@@ -391,11 +391,13 @@ Program::configureImpl(int argc, char *argv[]
             // print app help help
             helper->help(std::cout, std::string());
 
-            std::cout << "\n" << genericCmdline << cmdline
-                      << '\n' << genericConfig;
+            std::cout << "\n" << genericCmdline << cmdline;
+            helper->help(std::cout, "@cmdline");
+            std::cout << '\n' << genericConfig;
             if (!(flags_ & DISABLE_CONFIG_HELP)) {
                 // only when allowed
                 std::cout << config;
+                helper->help(std::cout, "@config");
             }
 
             helps.erase("all");
@@ -415,6 +417,8 @@ Program::configureImpl(int argc, char *argv[]
             helper->help(std::cout, std::string());
 
             std::cout << "\n" << genericCmdline << cmdline;
+            helper->help(std::cout, "@cmdline");
+
             if (helps.empty()) {
                 immediateExit(EXIT_SUCCESS);
             }
