@@ -26,6 +26,7 @@
 #ifndef shared_service_program_hpp_included_
 #define shared_service_program_hpp_included_
 
+#include <memory>
 #include <vector>
 #include <string>
 #include <ostream>
@@ -78,6 +79,24 @@ struct UnrecognizedParser {
     po::ext_parser extraParser;
 
     typedef boost::optional<UnrecognizedParser> optional;
+};
+
+/** Custom help printer.
+ */
+class HelpPrinter {
+public:
+    typedef std::shared_ptr<HelpPrinter> pointer;
+
+    HelpPrinter() {}
+    virtual ~HelpPrinter() {}
+
+    /** Prints help for what to out.
+     */
+    virtual bool help(std::ostream &out, const std::string &what) const;
+
+    /** List supported helps
+     */
+    virtual std::vector<std::string> list() const;
 };
 
 class Program : boost::noncopyable {
@@ -142,14 +161,25 @@ protected:
      *
      *  You should register --help-what in cmdline configuration to inform
      *  user about such help availability.
+     *
+     *  NB: May be overriden by help(vars)!
      */
     virtual bool help(std::ostream &out, const std::string &what)
         const { (void) out; (void) what; return false; }
 
     /** Returns list of available help information.
      *  Used in --help-all.
+     *
+     *  NB: May be overriden by help(vars)!
      */
     virtual std::vector<std::string> listHelps() const { return {}; }
+
+    /** Return help printer. By default, returm simple proxy to help() and
+     *  listHelps virtual functions
+     *
+     *  Can return empty pointer to fall back to defaults.
+     */
+    virtual HelpPrinter::pointer help(const po::variables_map &vars) const;
 
     dbglog::module log_;
 
@@ -213,6 +243,8 @@ private:
     /** Extracted from argv[0]
      */
     char *argv0_;
+
+    friend struct DefaultHelper;
 };
 
 struct UnrecognizedOptions {

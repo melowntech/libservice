@@ -241,6 +241,29 @@ void Program::preNotifyHook(const po::variables_map &) {}
 // nothing to do here
 void Program::preConfigHook(const po::variables_map &) {}
 
+struct DefaultHelper : HelpPrinter {
+    DefaultHelper(const Program &self) : self(self) {}
+
+    virtual bool help(std::ostream &out, const std::string &what) const {
+        return self.help(out, what);
+    }
+
+    virtual std::vector<std::string> list() const {
+        return self.listHelps();
+    }
+
+    const Program &self;
+
+    static std::shared_ptr<HelpPrinter> defaultHelper(const Program &self) {
+        return std::make_shared<DefaultHelper>(self);
+    }
+};
+
+HelpPrinter::pointer Program::help(const po::variables_map&) const
+{
+    return DefaultHelper::defaultHelper(*this);
+}
+
 po::variables_map
 Program::configureImpl(int argc, char *argv[]
                        , po::options_description genericCmdline
@@ -355,52 +378,59 @@ Program::configureImpl(int argc, char *argv[]
         helps.insert(what.begin(), what.end());
     }
 
-    // check for help
-    if (helps.find("all") != helps.end()) {
-        std::cout << name << ": ";
+    const bool hasHelp(vm.count("help"));
 
-        // print app help help
-        help(std::cout, std::string());
+    if (hasHelp || !helps.empty()) {
+        auto helper(help(vm));
+        if (!helper) { helper = DefaultHelper::defaultHelper(*this); }
 
-        std::cout << "\n" << genericCmdline << cmdline
-                  << '\n' << genericConfig;
-        if (!(flags_ & DISABLE_CONFIG_HELP)) {
-            // only when allowed
-            std::cout << config;
-        }
+        // check for help
+        if (helps.find("all") != helps.end()) {
+            std::cout << name << ": ";
 
-        helps.erase("all");
-        if (helps.empty()) {
-            for (const auto &h : listHelps()) {
-                std::cout << '\n';
-                help(std::cout, h);
+            // print app help help
+            helper->help(std::cout, std::string());
+
+            std::cout << "\n" << genericCmdline << cmdline
+                      << '\n' << genericConfig;
+            if (!(flags_ & DISABLE_CONFIG_HELP)) {
+                // only when allowed
+                std::cout << config;
             }
 
-            immediateExit(EXIT_SUCCESS);
-        }
-        std::cout << '\n';
-    } else if (vm.count("help")) {
-        std::cout << name << ": ";
+            helps.erase("all");
+            if (helps.empty()) {
+                for (const auto &h : helper->list()) {
+                    std::cout << '\n';
+                    helper->help(std::cout, h);
+                }
 
-        // print app help help
-        help(std::cout, std::string());
+                immediateExit(EXIT_SUCCESS);
+            }
+            std::cout << '\n';
+        } else if (hasHelp) {
+            std::cout << name << ": ";
 
-        std::cout << "\n" << genericCmdline << cmdline;
-        if (helps.empty()) {
-            immediateExit(EXIT_SUCCESS);
-        }
-        std::cout << '\n';
-    }
+            // print app help help
+            helper->help(std::cout, std::string());
 
-    if (!helps.empty()) {
-        for (const auto &what : helps) {
-            if (!help(std::cout, what)) {
-                throw po::unknown_option("--help-" + what);
+            std::cout << "\n" << genericCmdline << cmdline;
+            if (helps.empty()) {
+                immediateExit(EXIT_SUCCESS);
             }
             std::cout << '\n';
         }
 
-        immediateExit(EXIT_SUCCESS);
+        if (!helps.empty()) {
+            for (const auto &what : helps) {
+                if (!helper->help(std::cout, what)) {
+                    throw po::unknown_option("--help-" + what);
+                }
+                std::cout << '\n';
+            }
+
+            immediateExit(EXIT_SUCCESS);
+        }
     }
 
     licenceCheck();
@@ -618,5 +648,11 @@ UnrecognizedOptions::multiConfigOption(const std::string &key) const
 
     throw po::required_option(key);
 }
+
+bool HelpPrinter::help(std::ostream &, const std::string &) const {
+    return false;
+}
+
+std::vector<std::string> HelpPrinter::list() const { return {}; }
 
 } // namespace service
