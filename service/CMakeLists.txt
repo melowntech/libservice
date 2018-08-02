@@ -24,6 +24,7 @@ else()
     service.hpp service.cpp
     pidfile.hpp pidfile.cpp
     detail/signalhandler.hpp detail/signalhandler.cpp
+    ctrlclient.hpp ctrlclient.cpp
   )
 endif()
 
