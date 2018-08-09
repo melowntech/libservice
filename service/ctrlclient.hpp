@@ -29,20 +29,28 @@
 
 #include <string>
 #include <memory>
-#include <functional>
 
 #include <boost/filesystem/path.hpp>
 
+#include "utility/streams.hpp"
+
 namespace service {
 
+/** Control socket client.
+ *
+ *  NB: synchronous version only
+ */
 class CtrlClient {
 public:
     CtrlClient(const boost::filesystem::path &ctrl);
 
-    typedef std::function<void(const std::string &message)> MessageCallback;
+    /** Synchronously sends command and receives reply.
+     */
+    std::vector<std::string> command(const std::string &command);
 
-    void sendCommand(const std::string &command
-                     , const MessageCallback &replyCallback);
+    template <typename ...Args>
+    std::vector<std::string> command(const std::string &command
+                                     , Args &&...args);
 
     struct Detail;
 
@@ -52,6 +60,16 @@ private:
 
     std::shared_ptr<Detail> detail_;
 };
+
+// inlines
+
+template <typename ...Args>
+std::vector<std::string> CtrlClient::command(const std::string &command
+                                             , Args &&...args)
+{
+    return this->command(utility::concatWithSeparator
+                         (" ", command, std::forward<Args>(args)...));
+}
 
 } // namespace service
 

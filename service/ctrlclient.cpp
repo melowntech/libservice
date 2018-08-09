@@ -24,38 +24,67 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <boost/asio.hpp>
+#include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string/classification.hpp>
+
+#include "dbglog/dbglog.hpp"
+
 #include "./ctrlclient.hpp"
 
 namespace fs = boost::filesystem;
+namespace ba = boost::algorithm;
+namespace asio = boost::asio;
+
+
+using asio::local::stream_protocol;
 
 namespace service {
 
 struct CtrlClient::Detail {
     Detail(const fs::path &ctrl)
-        : ctrl(ctrl)
-    {}
+        : ctrl(ctrl), socket(ios)
+    {
+        socket.connect(stream_protocol::endpoint(ctrl.string()));
+    }
 
-    void sendCommand(const std::string &command
-                     , const MessageCallback &replyCallback);
+    std::vector<std::string> command(const std::string &command);
 
     const fs::path ctrl;
+
+    asio::io_service ios;
+    stream_protocol::socket socket;
+    asio::streambuf responseBuffer;
 };
 
-void CtrlClient::Detail::sendCommand(const std::string &command
-                                     , const MessageCallback &replyCallback)
+std::vector<std::string>
+CtrlClient::Detail::command(const std::string &command)
 {
-    (void) command;
-    (void) replyCallback;
+    // command + newline
+    std::vector<asio::const_buffer> request;
+    request.emplace_back(command.data(), command.size());
+    request.emplace_back("\n", 1);
+
+    asio::write(socket, request);
+
+    asio::read_until(socket, responseBuffer, "\4");
+
+    std::istream is(&responseBuffer);
+
+    std::string response;
+    std::getline(is, response, '\4');
+
+    std::vector<std::string> lines;
+    return ba::split(lines, response, ba::is_any_of("\n"));
 }
 
 CtrlClient::CtrlClient(const fs::path &ctrl)
     : detail_(std::make_shared<Detail>(ctrl))
 {}
 
-void CtrlClient::sendCommand(const std::string &command
-                             , const MessageCallback &replyCallback)
+std::vector<std::string> CtrlClient::command(const std::string &command)
 {
-    return detail_->sendCommand(command, replyCallback);
+    return detail().command(command);
 }
 
 } // namespace service
