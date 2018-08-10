@@ -54,6 +54,8 @@ public:
 
     struct Detail;
 
+    bool parseBoolean(const std::string &line) const;
+
 private:
     Detail& detail() { return *detail_; }
     const Detail& detail() const { return *detail_; }

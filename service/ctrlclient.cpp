@@ -27,6 +27,7 @@
 #include <boost/asio.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 
 #include "dbglog/dbglog.hpp"
 
@@ -75,7 +76,14 @@ CtrlClient::Detail::command(const std::string &command)
     std::getline(is, response, '\4');
 
     std::vector<std::string> lines;
-    return ba::split(lines, response, ba::is_any_of("\n"));
+    ba::split(lines, response, ba::is_any_of("\n"));
+
+    if (!lines.empty() && ba::starts_with(lines.front(), "error: ")) {
+        LOGTHROW(err2, std::runtime_error)
+            << "Mapproxy: <" << lines.front().substr(7) << ">.";
+    }
+
+    return lines;
 }
 
 CtrlClient::CtrlClient(const fs::path &ctrl)
@@ -85,6 +93,19 @@ CtrlClient::CtrlClient(const fs::path &ctrl)
 std::vector<std::string> CtrlClient::command(const std::string &command)
 {
     return detail().command(command);
+}
+
+bool CtrlClient::parseBoolean(const std::string &line) const
+{
+    if (line == "true") {
+        return true;
+    } else if (line == "false") {
+        return false;
+    }
+
+    LOGTHROW(err2, std::runtime_error)
+        << "Invalid reply from mapproxy: <" << line << ">.";
+    throw;
 }
 
 } // namespace service

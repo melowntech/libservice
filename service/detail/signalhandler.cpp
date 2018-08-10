@@ -393,9 +393,7 @@ void CtrlConnection::lineRead(const boost::system::error_code &e
         } catch (const std::exception &e) {
             LOG(err3, log_)
                 << "Error during handling ctrl command: " << e.what();
-
-            // TODO: write something to the client?
-            return;
+            os << "error: failed to execute command\n";
         }
     }
 
