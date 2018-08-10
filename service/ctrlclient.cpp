@@ -104,7 +104,7 @@ bool CtrlClient::parseBoolean(const std::string &line) const
     }
 
     LOGTHROW(err2, std::runtime_error)
-        << "Invalid reply from mapproxy: <" << line << ">.";
+        << "Invalid reply from server: <" << line << ">.";
     throw;
 }
 
