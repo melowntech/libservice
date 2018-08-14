@@ -25,6 +25,7 @@
  */
 #include <cstdio>
 #include <system_error>
+#include <unistd.h> // usleep
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -114,7 +115,8 @@ void allocate(const fs::path &path)
             || (pid == ::getpid())
             || !lockFd(file.fd))
         {
-            LOG(info4) << "Removing stale pid file for pid <" << pid << ">.";
+            LOG(info4) << "Removing stale pid file for pid <" << pid << "> ["
+                       << path.string() << "].";
 
             if (-1 == ::unlink(path.string().c_str())) {
                 std::system_error e(errno, std::system_category());
@@ -123,8 +125,10 @@ void allocate(const fs::path &path)
                 throw e;
             }
         } else {
-            LOGTHROW(err3, std::runtime_error)
-                << "Another instance is running with pid <" << pid << ">.";
+            LOGTHROW(err3, AlreadyRunning)
+                << "Another instance is running with pid <" << pid << "> ["
+                << path.string() << "].";
+
         }
         file.close();
 
@@ -211,6 +215,44 @@ long signal(const fs::path &path, int signal
     }
 
     return pid;
+}
+
+
+ScopedPidFile::ScopedPidFile(const boost::filesystem::path &path)
+    : path_(fs::absolute(path))
+{
+    allocate(path_);
+}
+
+ScopedPidFile::ScopedPidFile(const boost::filesystem::path &path
+                             , std::time_t waitTime, long checkPeriod)
+    : path_(fs::absolute(path))
+{
+    const auto end(std::time(nullptr) + waitTime);
+
+    for (;;) {
+        try {
+            allocate(path_);
+            return;
+        } catch (const service::pidfile::AlreadyRunning&) {
+            if (std::time(nullptr) >= end) {
+                // time out, rethrow
+                throw;
+            }
+
+            // wait next round
+            ::usleep(checkPeriod);
+        }
+    }
+}
+
+ScopedPidFile::~ScopedPidFile()
+{
+    if (!path_.empty() && (-1 == ::unlink(path_.string().c_str()))) {
+        std::system_error e(errno, std::system_category());
+        LOG(err3) << "Cannot unlink pid file " << path_ << ": "
+                  << e.code() << ", " << e.what() << ">.";
+    }
 }
 
 } } // namespace service::pidfile
