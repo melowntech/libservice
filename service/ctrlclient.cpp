@@ -46,7 +46,13 @@ struct CtrlClient::Detail {
     Detail(const fs::path &ctrl)
         : ctrl(ctrl), socket(ios)
     {
-        socket.connect(stream_protocol::endpoint(ctrl.string()));
+        try {
+            socket.connect(stream_protocol::endpoint(ctrl.string()));
+        } catch (const std::exception &e) {
+            LOGTHROW(err2, std::runtime_error)
+                << "Unable to connect to " << ctrl << ": <" << e.what()
+                << ">; is the server running?";
+        }
     }
 
     std::vector<std::string> command(const std::string &command);
