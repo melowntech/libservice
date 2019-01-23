@@ -271,7 +271,8 @@ public:
 
     CtrlConnection(Service &owner, asio::io_service &ios
                    , SignalHandler &sh, dbglog::module &log)
-        : owner_(owner), socket_(ios), sh_(sh), log_(log)
+        : owner_(owner), socket_(ios), strand_(ios), sh_(sh), log_(log)
+        , closed_(false)
     {}
 
     ~CtrlConnection() {}
@@ -289,11 +290,14 @@ public:
 private:
     Service &owner_;
     local::stream_protocol::socket socket_;
+    asio::io_service::strand strand_;
     SignalHandler &sh_;
     dbglog::module &log_;
 
     boost::asio::streambuf input_;
     boost::asio::streambuf output_;
+
+    bool closed_;
 };
 
 void SignalHandler::startAccept()
@@ -354,6 +358,8 @@ void CtrlConnection::lineRead(const boost::system::error_code &e
 
     LOG(debug, log_) << "Read: " << bytes << " bytes.";
 
+    input_.commit(bytes);
+
     std::istream is(&input_);
     std::string line;
     std::getline(is, line);
@@ -363,13 +369,21 @@ void CtrlConnection::lineRead(const boost::system::error_code &e
     auto cmdValue(utility::separated_values::split<std::vector<std::string> >
                   (line, " \t"));
 
+    bool terminateBlock(true);
+
     if (cmdValue.empty()) {
         os << "empty command received\n";
     } else {
+        auto &front(cmdValue.front());
+        if (!front.empty() && (front[0] == '!')) {
+            // close after command
+            front = front.substr(1);
+            closed_ = true;
+        }
+
         Service::CtrlCommand cmd{
-            cmdValue.front()
-            , std::vector<std::string>
-                (cmdValue.begin() + 1, cmdValue.end())
+            front
+                , std::vector<std::string>(cmdValue.begin() + 1, cmdValue.end())
         };
 
         try {
@@ -379,6 +393,9 @@ void CtrlConnection::lineRead(const boost::system::error_code &e
             } else if (cmd.cmd == "terminate") {
                 sh_.terminate();
                 os << "termination scheduled, bye\n";
+            } else if (cmd.cmd == "exit") {
+                closed_ = true;
+                terminateBlock = false;
             } else if (cmd.cmd == "help") {
                 os << "logrotate      schedules log reopen event\n"
                    << "terminate      schedules termination event\n"
@@ -397,16 +414,22 @@ void CtrlConnection::lineRead(const boost::system::error_code &e
         }
     }
 
-    // terminate response block
-    os << '\4';
+    if (!terminateBlock) {
+        // terminate response block
+        os << '\4';
+    }
 
     asio::async_write
-        (socket_
-         , output_
-         , lib::bind(&CtrlConnection::handleWrite
-                     , shared_from_this()
-                     , placeholders::_1
-                     , placeholders::_2));
+        (socket_, output_
+         , strand_.wrap(lib::bind(&CtrlConnection::handleWrite
+                                  , shared_from_this()
+                                  , placeholders::_1
+                                  , placeholders::_2)));
+
+    if (!closed_) {
+        // ready to read next command
+        startRead();
+    }
 }
 
 void CtrlConnection::handleWrite(const boost::system::error_code &e
@@ -421,11 +444,11 @@ void CtrlConnection::handleWrite(const boost::system::error_code &e
         return;
     }
 
-    LOG(debug, log_) << "Written: " << bytes << ".";
-    output_.consume(bytes);
+    LOG(debug, log_) << "Read: " << bytes << " bytes.";
 
-    // ready to read next command
-    startRead();
+    if (closed_ && !output_.size()) {
+        socket_.close();
+    }
 }
 
 void SignalHandler::atFork(utility::AtFork::Event event)
