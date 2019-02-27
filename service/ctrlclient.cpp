@@ -31,7 +31,7 @@
 
 #include "dbglog/dbglog.hpp"
 
-#include "./ctrlclient.hpp"
+#include "ctrlclient.hpp"
 
 namespace fs = boost::filesystem;
 namespace ba = boost::algorithm;

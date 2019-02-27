@@ -34,7 +34,7 @@
 
 #include "dbglog/dbglog.hpp"
 
-#include "./runninguntilsignalled.hpp"
+#include "runninguntilsignalled.hpp"
 
 namespace service {
 
