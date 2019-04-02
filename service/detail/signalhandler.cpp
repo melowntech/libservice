@@ -358,8 +358,6 @@ void CtrlConnection::lineRead(const boost::system::error_code &e
 
     LOG(debug, log_) << "Read: " << bytes << " bytes.";
 
-    input_.commit(bytes);
-
     std::istream is(&input_);
     std::string line;
     std::getline(is, line);
