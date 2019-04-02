@@ -377,11 +377,12 @@ void CtrlConnection::lineRead(const boost::system::error_code &e
             // close after command
             front = front.substr(1);
             closed_ = true;
+            terminateBlock = false;
         }
 
         Service::CtrlCommand cmd{
             front
-                , std::vector<std::string>(cmdValue.begin() + 1, cmdValue.end())
+            , std::vector<std::string>(cmdValue.begin() + 1, cmdValue.end())
         };
 
         try {
@@ -412,7 +413,7 @@ void CtrlConnection::lineRead(const boost::system::error_code &e
         }
     }
 
-    if (!terminateBlock) {
+    if (terminateBlock) {
         // terminate response block
         os << '\4';
     }
