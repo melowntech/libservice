@@ -37,6 +37,8 @@
 #include <boost/format.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/utility/in_place_factory.hpp>
+#include <boost/tokenizer.hpp>
+#include <boost/token_functions.hpp>
 
 #include "utility/buildsys.hpp"
 #include "utility/path.hpp"
@@ -221,17 +223,81 @@ std::string Program::argv0() const
 
 namespace {
 
-std::pair<std::string, std::string> helpParser(const std::string& s)
+std::pair<std::string, std::string> specialParser(const std::string& s)
 {
     if (s.find("--help-") == 0) {
         auto value(s.substr(7));
-        return {"@help", value.empty() ? " " : value};
+        return {"#help", value.empty() ? " " : value};
+    } else if (s.front() == '@') {
+        return { "response-file", s.substr(1) };
     } else {
         return {"", ""};
     }
 }
 
 const char *EXTRA_OPTIONS = "\n";
+
+typedef std::vector<std::string> Strings;
+typedef std::vector<boost::filesystem::path> Files;
+
+Strings parseResponseFiles(const Files &files)
+{
+    Strings args;
+
+    for (const auto &file: files) {
+        std::ifstream is(file.c_str());
+        if (!is) {
+            std::cerr
+                << "Unable to read response file " << file << "."
+                << std::endl;
+            immediateExit(EXIT_FAILURE);
+        }
+
+        typedef boost::char_separator<char> Separator;
+        typedef std::istreambuf_iterator<char> Iterator;
+        typedef boost::tokenizer<Separator, Iterator> Tokenizer;
+
+        Separator separator(" \n\r");
+        Tokenizer tokenizer(Iterator(is), Iterator(), separator);
+
+        std::copy(tokenizer.begin(), tokenizer.end()
+                  , std::back_inserter(args));
+    }
+
+    return args;
+}
+
+template <typename ...Args>
+po::command_line_parser
+createParser(const po::options_description &od
+             , const po::positional_options_description &po
+             , int flags, const po::ext_parser &extra
+             , Args &&...args)
+{
+    auto parser(po::command_line_parser(std::forward<Args>(args)...)
+                .style(po::command_line_style::default_style
+                       & ~po::command_line_style::allow_guessing)
+                .options(od)
+                .positional(po));
+    if (flags & ENABLE_UNRECOGNIZED_OPTIONS) {
+        parser.allow_unregistered();
+    }
+
+    // add extra parser if valid
+    if (extra) {
+        parser.extra_parser
+            ([=](const std::string &s) -> std::pair<std::string, std::string>
+             {
+                 auto res(specialParser(s));
+                 if (!res.first.empty()) { return res; }
+                 return extra(s);
+             });
+    } else {
+        parser.extra_parser(specialParser);
+    }
+
+    return parser;
+}
 
 } // namespace
 
@@ -248,9 +314,7 @@ struct DefaultHelper : HelpPrinter {
         return self.help(out, what);
     }
 
-    virtual std::vector<std::string> list() const {
-        return self.listHelps();
-    }
+    virtual Strings list() const { return self.listHelps(); }
 
     const Program &self;
 
@@ -279,7 +343,7 @@ Program::configureImpl(int argc, char *argv[]
         ("version,v", "display version and terminate")
         ("licence", "display terms of licence")
         ("license", "display terms of license")
-        ("config,f", po::value<std::vector<std::string> >()
+        ("config,f", po::value<Files>()
          , "path to configuration file; when using multiple config files "
          "first occurrence of option wins")
         ("help-all", "show help for both command line and config file; "
@@ -309,7 +373,13 @@ Program::configureImpl(int argc, char *argv[]
 
     po::options_description hiddenCmdline("hidden command line options");
     hiddenCmdline.add_options()
-        ("@help", po::value<std::vector<std::string>>(), "extra help")
+        ("#help", po::value<Strings>(), "extra help")
+        ;
+
+    po::options_description responseFile("response file support");
+    responseFile.add_options()
+        ("response-file", po::value<Files>()
+         , "Windows-style response files. Can be specified as @filename.")
         ;
 
     // all config options
@@ -321,38 +391,34 @@ Program::configureImpl(int argc, char *argv[]
     po::options_description extra;
     if (flags_ & ENABLE_UNRECOGNIZED_OPTIONS) {
         extra.add_options()
-            (EXTRA_OPTIONS, po::value<std::vector<std::string> >());
+            (EXTRA_OPTIONS, po::value<Strings>());
         all.add(extra);
         positionals.add(EXTRA_OPTIONS, -1);
     }
 
-    // parse cmdline
-    auto parser(po::command_line_parser(argc, argv)
-                .style(po::command_line_style::default_style
-                       & ~po::command_line_style::allow_guessing)
-                .options(all)
-                .positional(positionals));
-    if (flags_ & ENABLE_UNRECOGNIZED_OPTIONS) {
-        parser.allow_unregistered();
-    }
-
-    // add extra parser if valid
-    if (auto extra = extraParser()) {
-        parser.extra_parser
-            ([=](const std::string &s) -> std::pair<std::string, std::string>
-             {
-                 auto res(helpParser(s));
-                 if (!res.first.empty()) { return res; }
-                 return extra(s);
-             });
-    } else {
-        parser.extra_parser(helpParser);
-    }
-
-    auto parsed(parser.run());
-
     po::variables_map vm;
-    po::store(parsed, vm);
+    std::vector<po::option> parsedOptions;
+
+    const auto &parse([&](po::command_line_parser &&parser)
+    {
+        auto parsed(parser.run());
+        po::store(parsed, vm);
+        if (unrecognized(flags_)) {
+            parsedOptions.insert(parsedOptions.end(), parsed.options.begin()
+                                 , parsed.options.end());
+        }
+    });
+
+    // parse cmdline (support response file)
+    po::options_description full;
+    full.add(all).add(responseFile);
+    parse(createParser(full, positionals, flags_, extraParser(), argc, argv));
+
+    if (vm.count("response-file")) {
+        // parse response file as a cmdline, ignore response file
+        const auto args(parseResponseFiles(vm["response-file"].as<Files>()));
+        parse(createParser(all, positionals, flags_, {}, args));
+    }
 
     if (vm.count("version")) {
         std::cout << versionInfo() << std::endl
@@ -373,8 +439,8 @@ Program::configureImpl(int argc, char *argv[]
     }
 
     std::set<std::string> helps;
-    if (vm.count("@help")) {
-        auto what(vm["@help"].as<std::vector<std::string>>());
+    if (vm.count("#help")) {
+        auto what(vm["#help"].as<Strings>());
         helps.insert(what.begin(), what.end());
     }
 
@@ -445,11 +511,11 @@ Program::configureImpl(int argc, char *argv[]
     UnrecognizedOptions un;
 
     // get list of config files or use default (if given)
-    std::vector<std::string> cfgs;
+    Files cfgs;
     if (vm.count("config")) {
-        cfgs = vm["config"].as<std::vector<std::string> >();
+        cfgs = vm["config"].as<Files>();
     } else if (defaultConfigFile_) {
-        cfgs.push_back(defaultConfigFile_->string());
+        cfgs.push_back(*defaultConfigFile_);
     }
 
     if (!cfgs.empty()) {
@@ -471,9 +537,9 @@ Program::configureImpl(int argc, char *argv[]
                     add(un, parsed);
                 }
 
-                LOG(info3) << "Loaded configuration from <" << cfg << ">.";
+                LOG(info3) << "Loaded configuration from " << cfg << ".";
             } catch(const std::ios_base::failure &e) {
-                LOG(fatal) << "Cannot read config file <" << cfg << ">: "
+                LOG(fatal) << "Cannot read config file " << cfg << ": "
                            << e.what();
                 immediateExit(EXIT_FAILURE);
             }
@@ -534,7 +600,7 @@ Program::configureImpl(int argc, char *argv[]
          * po::include_positional) except only unknown positionals are
          * collected
          */
-        for (const auto &opt : parsed.options) {
+        for (const auto &opt : parsedOptions) {
             if (opt.unregistered
                 || ((opt.position_key >= 0)
                     && (positionals.name_for_position(opt.position_key)
@@ -657,6 +723,6 @@ bool HelpPrinter::help(std::ostream &, const std::string &) const {
     return false;
 }
 
-std::vector<std::string> HelpPrinter::list() const { return {}; }
+Strings HelpPrinter::list() const { return {}; }
 
 } // namespace service
