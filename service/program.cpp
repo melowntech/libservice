@@ -376,7 +376,7 @@ Program::configureImpl(int argc, char *argv[]
         ("#help", po::value<Strings>(), "extra help")
         ;
 
-    po::options_description responseFile("response file support");
+    po::options_description responseFile;
     responseFile.add_options()
         ("response-file", po::value<Files>()
          , "Windows-style response files. Can be specified as @filename.")
@@ -457,7 +457,7 @@ Program::configureImpl(int argc, char *argv[]
             // print app help help
             helper->help(std::cout, std::string());
 
-            std::cout << "\n" << genericCmdline << cmdline;
+            std::cout << "\n" << genericCmdline << responseFile << cmdline;
             helper->help(std::cout, "@cmdline");
             std::cout << '\n' << genericConfig;
             if (!(flags_ & DISABLE_CONFIG_HELP)) {
@@ -482,7 +482,7 @@ Program::configureImpl(int argc, char *argv[]
             // print app help help
             helper->help(std::cout, std::string());
 
-            std::cout << "\n" << genericCmdline << cmdline;
+            std::cout << "\n" << genericCmdline << responseFile << cmdline;
             helper->help(std::cout, "@cmdline");
 
             if (helps.empty()) {
