@@ -28,7 +28,7 @@ else()
   )
 endif()
 
-add_customer_sources("service" service_SOURCES
+add_customer_sources_with_default(service service_SOURCES
   customer/program.{CUSTOMER}.cpp)
 
 add_library(service STATIC ${service_SOURCES})
