@@ -30,7 +30,7 @@ namespace service {
 // Default copyright.
 std::string Program::copyright() const
 {
-    return R"RAW(Copyright (C) 2011-2016 Melown Technologies SE
+    return R"RAW(Copyright (C) 2011-2020 Melown Technologies SE
 Strakonicka 1199/2d, 150 00 Praha 5, Czech Republic)RAW";
 }
 
