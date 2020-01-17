@@ -89,7 +89,7 @@ struct Config {
             po::store( po::command_line_parser( argc, argv )
                 .options( cmdopts ).positional( p ).run(), vm_ );
 
-        } catch ( boost::program_options::error & e ) {
+        } catch (const boost::program_options::error & e ) {
 
             LOG( err2 ) << e.what();
             throw BadInit_t( e.what() );
@@ -115,7 +115,7 @@ struct Config {
                 store( parse_config_file( f, cfgopts ), vm_ );
                 f.close();
 
-            } catch( std::ios_base::failure ) {
+            } catch(const std::ios_base::failure& ) {
                 throw BadInit_t( "Error reading config file '" +
                     vm_["config"].as<std::string>() + "'." );
             }
@@ -126,7 +126,7 @@ struct Config {
         // notify options
         try {
             po::notify( vm_ );
-        } catch ( boost::program_options::error & e ) {
+        } catch (const boost::program_options::error & e ) {
             LOG( err2 ) << e.what();
             throw BadInit_t( e.what() );
         }
@@ -174,7 +174,7 @@ protected :
         // fill positional options
         try {
             args_ = vm_["positional"].as<std::vector<std::string > >();
-        } catch ( boost::bad_any_cast & ) {
+        } catch (const boost::bad_any_cast & ) {
             // well, let's just say it is empty (it probably is)
             args_ = std::vector<std::string>();
         }
