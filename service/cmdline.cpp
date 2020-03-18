@@ -25,17 +25,98 @@
  */
 #include "cmdline.hpp"
 
+/*
+ * Defining SERVICE_PRINT_ALL_EXCEPTIONS will ensure that
+ * any unhandled exception is first printed to standard
+ * error output.
+ * The exception is rethrown afterwards
+ * and the program crashes as it would have anyway.
+ * This behavior is especially useful on windows, where
+ * post-mortem debugging is more difficult
+ * and we would be left completely blind.
+ * Elsewhere, this behavior is disabled by default
+ * to not interfere with post-mortem debugging.
+ * It is also disabled, by default, for debug configurations
+ * so that the exception can be handled by debugger
+ * at the original throwing site.
+ */
+#if !defined(SERVICE_PRINT_ALL_EXCEPTIONS) \
+ && defined(_WIN32) && defined(NDEBUG)
+#include <iostream>
+#include <iomanip>
+#define SERVICE_PRINT_ALL_EXCEPTIONS
+#endif
+
 namespace service {
+
+#ifdef SERVICE_PRINT_ALL_EXCEPTIONS
+
+namespace {
+
+[[noreturn]] void handleException()
+{
+    try
+    {
+        throw; // rethrow the currently active exception
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << "Cmdline: Unhandled standard exception: <"
+            << e.what() << ">." << std::endl;
+        throw; // this handler may not return
+    }
+    catch (...)
+    {
+        std::cerr << "Cmdline: Unhandled exception of unknown type."
+            << std::endl;
+        throw; // this handler may not return
+    }
+}
+
+} // namespace
+
+Cmdline::Cmdline(const std::string &name, const std::string &version
+    , int flags)
+    try : Program(name, version, flags)
+{}
+catch (...)
+{
+    handleException();
+}
+
+#else
 
 Cmdline::Cmdline(const std::string &name, const std::string &version
                  , int flags)
     : Program(name, version, flags)
 {}
 
+#endif // SERVICE_PRINT_ALL_EXCEPTIONS
+
 Cmdline::~Cmdline()
 {}
 
 int Cmdline::operator()(int argc, char *argv[])
+{
+#ifdef SERVICE_PRINT_ALL_EXCEPTIONS
+
+    try
+    {
+        return handleOperator(argc, argv);
+    }
+    catch (...)
+    {
+        handleException();
+    }
+
+#else
+
+    return handleOperator(argc, argv);
+
+#endif // SERVICE_PRINT_ALL_EXCEPTIONS
+}
+
+int Cmdline::handleOperator(int argc, char *argv[])
 {
     dbglog::thread_id("main");
 

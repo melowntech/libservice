@@ -51,6 +51,9 @@ protected:
     virtual int run() = 0;
 
     virtual bool help(std::ostream &out, const std::string &what) const;
+
+private:
+    int handleOperator(int argc, char *argv[]);
 };
 
 } // namespace service
