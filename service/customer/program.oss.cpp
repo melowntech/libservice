@@ -5,7 +5,7 @@
  * CMakeLists.txt:
  *
  *     # bootstrap build system
- *     cmake_minimum_required(VERSION 2.8.11)
+ *     cmake_minimum_required(VERSION 3.10)
  *     project(project-name)
  *     # by default, this is OSS build (can be overrided by customer machinery)
  *     set(BUILDSYS_DEFAULT_CUSTOMER_NAME oss)
