@@ -41,10 +41,14 @@
  * at the original throwing site.
  */
 #if !defined(SERVICE_PRINT_ALL_EXCEPTIONS) \
- && defined(_WIN32) && defined(NDEBUG)
-#include <iostream>
-#include <iomanip>
-#define SERVICE_PRINT_ALL_EXCEPTIONS
+    && defined(_WIN32) && defined(NDEBUG)
+    // implicitly define for this configuration
+#   define SERVICE_PRINT_ALL_EXCEPTIONS
+#endif
+
+#ifdef SERVICE_PRINT_ALL_EXCEPTIONS
+#   include <iostream>
+#   include <iomanip>
 #endif
 
 namespace service {
