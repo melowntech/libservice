@@ -86,6 +86,10 @@ public:
 
     boost::optional<Persona> getPersona() const { return persona_; }
 
+    /** Register signal norification.
+     */
+    void registerSignal(int signo);
+
 protected:
     friend class detail::SignalHandler;
 
@@ -133,6 +137,10 @@ protected:
      * \param logFile path to current log file
      */
     virtual void logRotated(const boost::filesystem::path &logFile);
+
+    /** Called when a user-registered signal occurs.
+     */
+    virtual void signal(int signo);
 
 private:
     /** Called on log rotate event to re-open log file.

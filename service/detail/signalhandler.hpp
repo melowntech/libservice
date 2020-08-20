@@ -173,6 +173,10 @@ public:
 
     void logRotate();
 
+    /** Register custom signal watch.
+     */
+    void registerSignal(int signo);
+
 private:
     void start();
 

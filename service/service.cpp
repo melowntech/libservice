@@ -822,4 +822,15 @@ void Service::logRotate()
 
 void Service::logRotated(const boost::filesystem::path&) {}
 
+void Service::registerSignal(int signo)
+{
+    signalHandler_->registerSignal(signo);
+}
+
+void Service::signal(int signo)
+{
+    LOG(warn3) << "You've registered custom signal handling for signal <"
+               << signo << "> but forgot to implement a signal handler.";
+}
+
 } // namespace Service

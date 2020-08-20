@@ -245,6 +245,11 @@ void SignalHandler::signal(const boost::system::error_code &e, int signo)
         // mark statistics request
         ++statEvent_;
         break;
+
+    default:
+        // user-registered signal
+        owner_.signal(signo);
+        break;
     }
     startSignals();
 }
@@ -466,6 +471,11 @@ void SignalHandler::atFork(utility::AtFork::Event event)
         stopAccept();
         break;
     }
+}
+
+void SignalHandler::registerSignal(int signo)
+{
+    ios_.post([this, signo]() { signals_.add(signo); });
 }
 
 struct ModeParser {
