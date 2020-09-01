@@ -90,6 +90,10 @@ public:
      */
     void registerSignal(int signo);
 
+    /** Returns whether we are configured to run as a daemon.
+     */
+    bool daemonize() { return daemonize_; }
+
 protected:
     friend class detail::SignalHandler;
 
