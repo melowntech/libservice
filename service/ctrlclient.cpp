@@ -31,6 +31,8 @@
 
 #include "dbglog/dbglog.hpp"
 
+#include "utility/raise.hpp"
+
 #include "ctrlclient.hpp"
 
 namespace fs = boost::filesystem;
@@ -43,8 +45,9 @@ using asio::local::stream_protocol;
 namespace service {
 
 struct CtrlClient::Detail {
-    Detail(const fs::path &ctrl)
-        : ctrl(ctrl), socket(ios)
+    Detail(const fs::path &ctrl, const std::string &name)
+        : ctrl(ctrl), name(name.empty() ? std::string("client") : name)
+        , socket(ios)
     {
         try {
             socket.connect(stream_protocol::endpoint(ctrl.string()));
@@ -58,6 +61,7 @@ struct CtrlClient::Detail {
     std::vector<std::string> command(const std::string &command);
 
     const fs::path ctrl;
+    const std::string name;
 
     asio::io_service ios;
     stream_protocol::socket socket;
@@ -84,17 +88,21 @@ CtrlClient::Detail::command(const std::string &command)
     std::vector<std::string> lines;
     ba::split(lines, response, ba::is_any_of("\n"));
 
-    if (!lines.empty() && ba::starts_with(lines.front(), "error: ")) {
-        LOGTHROW(err2, std::runtime_error)
-            << "Mapproxy: <" << lines.front().substr(7) << ">.";
+    if (!lines.empty()) {
+        if (ba::starts_with(lines.front(), "error: ")) {
+            utility::raise<utility::CtrlCommandError>
+                ("%s: %s", name, lines.front().substr(7));
+        }
+        if (lines.back().empty()) { lines.pop_back(); }
     }
 
     return lines;
 }
 
-CtrlClient::CtrlClient(const fs::path &ctrl)
-    : detail_(std::make_shared<Detail>(ctrl))
-{}
+CtrlClient::CtrlClient(const fs::path &ctrl, const std::string &name)
+    : detail_(std::make_shared<Detail>(ctrl, name))
+{
+}
 
 std::vector<std::string> CtrlClient::command(const std::string &command)
 {

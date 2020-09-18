@@ -56,6 +56,7 @@ namespace service {
 Service::Service(const std::string &name, const std::string &version
                  , int flags)
     : Program(name, version, flags)
+    , daemonize_(false)
 {}
 
 Service::~Service()
@@ -447,7 +448,7 @@ int Service::operator()(int argc, char *argv[])
         ctrlConfig.configure(vm);
         config.configure(vm);
 
-        daemonize = vm.count("daemonize");
+        daemonize_ = daemonize = vm.count("daemonize");
         daemonizeNochdir = vm.count("daemonize-nochdir");
         daemonizeNoclose = vm.count("daemonize-noclose");
 

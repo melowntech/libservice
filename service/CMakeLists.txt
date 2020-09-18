@@ -36,3 +36,5 @@ buildsys_library(service)
 
 target_link_libraries(service ${MODULE_LIBRARIES})
 buildsys_target_compile_definitions(service ${MODULE_DEFINITIONS})
+
+add_subdirectory(tools EXCLUDE_FROM_ALL)

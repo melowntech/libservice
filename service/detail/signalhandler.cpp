@@ -385,10 +385,8 @@ void CtrlConnection::lineRead(const boost::system::error_code &e
             terminateBlock = false;
         }
 
-        Service::CtrlCommand cmd{
-            front
-            , std::vector<std::string>(cmdValue.begin() + 1, cmdValue.end())
-        };
+        Service::CtrlCommand cmd
+            (front, std::next(cmdValue.begin()), cmdValue.end());
 
         try {
             if (cmd.cmd == "logrotate") {
@@ -411,6 +409,10 @@ void CtrlConnection::lineRead(const boost::system::error_code &e
             } else {
                 owner_.processCtrl(cmd, os);
             }
+        } catch (const utility::CtrlCommandError &e) {
+            LOG(err3, log_)
+                << "Error during handling ctrl command: " << e.what();
+            os << "error: " << e.what() << " \n";
         } catch (const std::exception &e) {
             LOG(err3, log_)
                 << "Error during handling ctrl command: " << e.what();

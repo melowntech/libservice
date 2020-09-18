@@ -32,6 +32,7 @@
 
 #include "utility/runnable.hpp"
 #include "utility/identity.hpp"
+#include "utility/ctrlcommand.hpp"
 
 #include "program.hpp"
 #include "persona.hpp"
@@ -73,10 +74,7 @@ public:
         void configure(const po::variables_map &vars);
     };
 
-    struct CtrlCommand {
-        std::string cmd;
-        std::vector<std::string> args;
-    };
+    typedef utility::CtrlCommand CtrlCommand;
 
     void processCtrl(const CtrlCommand &cmd, std::ostream &output);
 

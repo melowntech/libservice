@@ -29,10 +29,12 @@
 
 #include <string>
 #include <memory>
+#include <stdexcept>
 
 #include <boost/filesystem/path.hpp>
 
 #include "utility/streams.hpp"
+#include "utility/ctrlcommand.hpp"
 
 namespace service {
 
@@ -42,7 +44,8 @@ namespace service {
  */
 class CtrlClient {
 public:
-    CtrlClient(const boost::filesystem::path &ctrl);
+    CtrlClient(const boost::filesystem::path &ctrl
+               , const std::string &name = std::string());
 
     /** Synchronously sends command and receives reply.
      */
