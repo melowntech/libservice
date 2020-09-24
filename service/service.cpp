@@ -645,7 +645,7 @@ int Service::operator()(int argc, char *argv[])
     if (code) {
         LOG(err4, log_) << "Terminated with error " << code << '.';
     } else {
-        LOG(info4, log_) << "Terminated normally.";
+        LOG(info4, log_) << "Normal shutdown.";
     }
 
     return code;
