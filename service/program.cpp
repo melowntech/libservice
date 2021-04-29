@@ -511,12 +511,14 @@ Program::configureImpl(int argc, char *argv[]
     UnrecognizedOptions un;
 
     // get list of config files or use default (if given)
-    Files cfgs;
+    auto &cfgs(configFiles_);
     if (vm.count("config")) {
         cfgs = vm["config"].as<Files>();
     } else if (defaultConfigFile_) {
         cfgs.push_back(*defaultConfigFile_);
     }
+    // and absolutize them
+    for (auto &cfg : cfgs) { cfg = absolute(cfg); }
 
     if (!cfgs.empty()) {
         po::options_description configs(name);

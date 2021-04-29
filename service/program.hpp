@@ -111,6 +111,10 @@ public:
 
     boost::filesystem::path logFile() const { return logFile_; }
 
+    std::vector<boost::filesystem::path> configFiles() const {
+        return configFiles_;
+    }
+
     int flags() const { return flags_; }
 
     utility::Duration uptime();
@@ -230,7 +234,15 @@ private:
                   , po::options_description genericConfig);
 
     int flags_;
+
+    /** Path to log file as specified on the command line. Absolutized.
+     */
     boost::filesystem::path logFile_;
+
+    /** List of config files in the order as specified on the command line.
+     *  Absolutized.
+     */
+    std::vector<boost::filesystem::path> configFiles_;
 
     utility::DurationMeter uptime_;
     std::time_t upSince_;
