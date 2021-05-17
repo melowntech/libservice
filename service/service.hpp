@@ -65,6 +65,7 @@ public:
     struct Config {
         std::string username;
         std::string groupname;
+        bool loginEnv = false;
 
         Config() {}
 

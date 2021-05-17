@@ -48,6 +48,7 @@
 #include "utility/steady-clock.hpp"
 #include "utility/time.hpp"
 #include "utility/path.hpp"
+#include "utility/environment.hpp"
 
 namespace fs = boost::filesystem;
 
@@ -153,6 +154,26 @@ Persona switchPersona(dbglog::module &log, const Service::Config &config
         << "Run under " << username << ":" << groupname << ".";
 
     return persona;
+}
+
+void loginEnv(const Service::Config &config, const Persona &persona)
+{
+    if (!config.loginEnv) { return; }
+
+    // not thread safe but there should be no other thread running now
+    auto passwd(::getpwuid(persona.running.uid));
+    if (!passwd) {
+        LOGTHROW(err3, std::runtime_error)
+            << "Unable to find passwd entry for uid " << persona.running.uid
+            << ".";
+        throw;
+    }
+
+    utility::Environment env;
+    env["LOGNAME"] = env["USER"] = passwd->pw_name;
+    env["HOME"] = passwd->pw_dir;
+    env["SHELL"] = passwd->pw_shell;
+    utility::apply(env);
 }
 
 struct SigDef {
@@ -605,6 +626,7 @@ int Service::operator()(int argc, char *argv[])
         auto privilegesRegainable(prePersonaSwitch());
         try {
             persona_ = switchPersona(log_, config, privilegesRegainable);
+            loginEnv(config, persona_.value());
         } catch (const std::exception &e) {
             return EXIT_FAILURE;
         }
@@ -803,6 +825,8 @@ void Service::Config::configuration(po::options_description &cmdline
          , "Switch process persona to given username.")
         ("service.group", po::value(&groupname)
          , "Switch process persona to given group name.")
+        ("service.loginEnv", po::value(&loginEnv)->default_value(loginEnv)
+         , "Generate login-like environment variables (HOME, USER, ...).")
         ;
 }
 
