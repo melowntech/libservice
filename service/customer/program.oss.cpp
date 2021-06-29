@@ -19,7 +19,7 @@ namespace service {
 std::string Program::copyright() const
 {
     return R"RAW(Copyright (C) 2011-2021 Melown Technologies SE
-Strakonicka 1199/2d, 150 00 Praha 5, Czech Republic)RAW";
+Strakonicka 3363/2d, 150 00 Praha 5, Czech Republic)RAW";
 }
 
 // OSS license (2 paragraph BSD)
