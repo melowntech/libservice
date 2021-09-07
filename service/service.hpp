@@ -129,6 +129,12 @@ protected:
      */
     virtual void postPersonaSwitch() {}
 
+    /** Called before (possible) daemonization.
+     *
+     *  \param daemonize true when program is about to daemonize
+     */
+    virtual void preDaemonize(bool daemonize) { (void) daemonize; }
+
     virtual bool ctrl(const CtrlCommand &cmd, std::ostream &output);
 
     virtual void stat(std::ostream &output);

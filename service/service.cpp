@@ -499,6 +499,9 @@ int Service::operator()(int argc, char *argv[])
 
     // daemonize if asked to do so
 
+    // notify that we are (possibly) about to daemonize
+    preDaemonize(daemonize);
+
     // daemonization code
     // NB: this piece of code must be terminated only by "_exit"
     // returning or calling exit() calls destructors and bad things happen!

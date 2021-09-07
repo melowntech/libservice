@@ -1,5 +1,5 @@
 # bump version here
-set(service_VERSION 1.7)
+set(service_VERSION 1.8)
 
 define_module(LIBRARY service=${service_VERSION}
   DEPENDS utility>=1.11 dbglog>=1.4
