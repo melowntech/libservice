@@ -66,6 +66,12 @@ public:
 
     template <typename T>
     T* get(std::size_t count = 1) {
+        auto al(alignof(T));
+        auto misalign(offset_ % al);
+        if (misalign) {
+            offset_ += (al - misalign);
+        }
+
         // TODO: check size
         auto data(static_cast<char*>(mem_.get_address()) + offset_);
         offset_ += sizeof(T) * count;
