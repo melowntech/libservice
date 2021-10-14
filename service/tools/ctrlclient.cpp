@@ -26,17 +26,23 @@ private:
     void configuration(po::options_description &cmdline
                        , po::options_description &config
                        , po::positional_options_description &pd)
-        UTILITY_OVERRIDE;
+        override;
 
-    void configure(const po::variables_map&) UTILITY_OVERRIDE {}
+    void configure(const po::variables_map &vars) override;
 
     bool help(std::ostream &out, const std::string &what) const
-        UTILITY_OVERRIDE;
+        override;
 
-    int run() UTILITY_OVERRIDE;
+    int run() override;
+
+    int runInteractive();
+
+    int runCommand();
 
     fs::path connect_;
     fs::path history_;
+
+    boost::optional<std::string> command_;
 };
 
 void CtrlClient::configuration(po::options_description &cmdline
@@ -48,12 +54,19 @@ void CtrlClient::configuration(po::options_description &cmdline
          , "Path to UNIX socket to connect to.")
         ("history", po::value(&history_)
          , "Path to a history file.")
+        ("command,c", po::value(&command_)
+         , "Executes command from input string.")
         ;
 
     pd.add("connect", 1)
         ;
 
     (void) config;
+}
+
+void CtrlClient::configure(const po::variables_map &vars)
+{
+    (void) vars;
 }
 
 bool CtrlClient::help(std::ostream &out, const std::string &what) const
@@ -70,6 +83,13 @@ bool CtrlClient::help(std::ostream &out, const std::string &what) const
 }
 
 int CtrlClient::run()
+{
+    if (command_) { return runCommand(); }
+
+    return runInteractive();
+}
+
+int CtrlClient::runInteractive()
 {
     ::using_history();
 
@@ -114,6 +134,24 @@ int CtrlClient::run()
     }
 
     std::cout << std::endl;
+    return EXIT_SUCCESS;
+}
+
+int CtrlClient::runCommand()
+{
+    try {
+        service::CtrlClient client(connect_, name);
+
+        for (const auto &line : client.command(*command_)) {
+            std::cout << line << "\n";
+        }
+
+        std::cout << std::flush;
+    } catch (const std::exception &e) {
+        std::cerr << name << ": " << e.what() << std::endl;
+        return EXIT_FAILURE;
+    }
+
     return EXIT_SUCCESS;
 }
 
