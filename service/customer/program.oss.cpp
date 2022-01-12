@@ -18,7 +18,7 @@ namespace service {
 // OSS Copyright holder
 std::string Program::copyright() const
 {
-    return R"RAW(Copyright (C) 2011-2021 Melown Technologies SE
+    return R"RAW(Copyright (C) 2011-2022 Melown Technologies SE
 Strakonicka 3363/2d, 150 00 Praha 5, Czech Republic)RAW";
 }
 

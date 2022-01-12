@@ -43,6 +43,8 @@
 #include "utility/buildsys.hpp"
 #include "utility/path.hpp"
 
+#include "githash.hpp"
+
 #include "program.hpp"
 
 #ifdef BUILDSYS_CUSTOMER_BUILD
@@ -156,15 +158,22 @@ Program::~Program()
 {
 }
 
-std::string Program::identity() const { return name + "/" + version; }
+std::string Program::identity() const {
+    return name + "/" + version + "/" + detail::gitHash;
+}
 
 std::string Program::versionInfo() const
 {
     std::ostringstream os;
     os << name << ' ' << version
        << (" (built on " __DATE__ " " __TIME__ " at ")
-       << utility::buildsys::Hostname
-       << (LOCAL_BUILDSYS_CUSTOMER_INFO ")");
+       << utility::buildsys::Hostname;
+
+    if (*detail::gitHash) {
+        os << " from git commit " << detail::gitHash;
+    }
+
+    os << (LOCAL_BUILDSYS_CUSTOMER_INFO ")");
     return os.str();
 }
 

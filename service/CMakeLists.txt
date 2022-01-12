@@ -28,6 +28,33 @@ else()
   )
 endif()
 
+
+### vvv git hash functionality vvv
+
+if (GIT_FOUND)
+  execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+    RESULT_VARIABLE result
+    OUTPUT_VARIABLE git_hash
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  if (result)
+    set(git_hash "")
+  endif()
+else()
+  set(git_hash "")
+endif()
+
+set(githash_in githash.hpp.in)
+set(githash_out ${CMAKE_CURRENT_BINARY_DIR}/githash.hpp)
+
+configure_file(${githash_in} ${githash_out}
+  ESCAPE_QUOTES @ONLY)
+
+list(APPEND service_SOURCES ${githash_out})
+
+### ^^^ git hash functionality ^^^
+
+
 add_customer_sources_with_default(service service_SOURCES
   customer/program.{CUSTOMER}.cpp)
 
