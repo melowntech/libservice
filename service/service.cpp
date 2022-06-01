@@ -479,6 +479,20 @@ int Service::operator()(int argc, char *argv[])
                 "make sense only together with --daemonize.";
         }
 
+        if (daemonize) {
+            if (pidFilePath.empty()) {
+                LOG(fatal, log_)
+                    << "Program cannot be daemonized without a PID file.";
+                return EXIT_FAILURE;
+            }
+
+            if (logFile().empty()) {
+                LOG(fatal, log_)
+                    << "Program cannot be daemonized without a log file.";
+                return EXIT_FAILURE;
+            }
+        }
+
         // make sure pidfile is an absolute path
         if (!pidFilePath.empty()) {
             pidFilePath = absolute(pidFilePath);
