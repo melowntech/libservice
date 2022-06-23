@@ -2,7 +2,7 @@
 set(service_VERSION 1.9)
 
 define_module(LIBRARY service=${service_VERSION}
-  DEPENDS utility>=1.11 dbglog>=1.4
+  DEPENDS utility>=1.41 dbglog>=1.7
   Boost_FILESYSTEM Boost_PROGRAM_OPTIONS Boost_SYSTEM
   # we need pthread_* stuff
   THREADS)
@@ -62,6 +62,6 @@ add_library(service STATIC ${service_SOURCES})
 buildsys_library(service)
 
 target_link_libraries(service ${MODULE_LIBRARIES})
-buildsys_target_compile_definitions(service ${MODULE_DEFINITIONS})
+target_compile_definitions(service PRIVATE ${MODULE_DEFINITIONS})
 
 add_subdirectory(tools EXCLUDE_FROM_ALL)

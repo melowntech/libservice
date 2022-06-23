@@ -12,5 +12,5 @@ if(READLINE_FOUND AND NOT WIN32)
   buildsys_binary(service-ctrlclient)
 
   target_link_libraries(service-ctrlclient ${MODULE_LIBRARIES})
-  buildsys_target_compile_definitions(service-ctrlclient ${MODULE_DEFINITIONS})
+  target_compile_definitions(service-ctrlclient PRIVATE ${MODULE_DEFINITIONS})
 endif()
