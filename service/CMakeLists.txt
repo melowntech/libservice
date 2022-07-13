@@ -1,11 +1,7 @@
 # bump version here
-set(service_VERSION 1.9)
+set(service_VERSION 1.10)
 
-define_module(LIBRARY service=${service_VERSION}
-  DEPENDS utility>=1.41 dbglog>=1.7
-  Boost_FILESYSTEM Boost_PROGRAM_OPTIONS Boost_SYSTEM
-  # we need pthread_* stuff
-  THREADS)
+set(service_EXTRA_DEPENDS)
 
 compile_with_hostname()
 
@@ -25,7 +21,12 @@ else()
     pidfile.hpp pidfile.cpp
     detail/signalhandler.hpp detail/signalhandler.cpp
     ctrlclient.hpp ctrlclient.cpp
-  )
+    detail/ctrlclient.hpp
+    netctrlclient.hpp netctrlclient.cpp
+    ctrlhandshake.hpp ctrlhandshake.cpp
+    )
+
+  list(APPEND service_EXTRA_DEPENDS Boost_RANDOM)
 endif()
 
 
@@ -57,6 +58,13 @@ list(APPEND service_SOURCES ${githash_out})
 
 add_customer_sources_with_default(service service_SOURCES
   customer/program.{CUSTOMER}.cpp)
+
+define_module(LIBRARY service=${service_VERSION}
+  DEPENDS utility>=1.42 dbglog>=1.7
+  Boost_FILESYSTEM Boost_PROGRAM_OPTIONS Boost_SYSTEM
+  ${service_EXTRA_DEPENDS}
+  # we need pthread_* stuff
+  THREADS)
 
 add_library(service STATIC ${service_SOURCES})
 buildsys_library(service)

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2018 Melown Technologies SE
+ * Copyright (c) 2022 Melown Technologies SE
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -25,59 +25,80 @@
  */
 
 #include <boost/asio.hpp>
-#include <boost/algorithm/string/split.hpp>
-#include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 
 #include "dbglog/dbglog.hpp"
 
-#include "utility/raise.hpp"
+#include "utility/tcpendpoint-io.hpp"
+#include "utility/md5.hpp"
+#include "utility/uri.hpp"
+#include "utility/format.hpp"
 
-#include "ctrlclient.hpp"
+#include "ctrlhandshake.hpp"
+#include "netctrlclient.hpp"
 #include "detail/ctrlclient.hpp"
 
 namespace fs = boost::filesystem;
 namespace ba = boost::algorithm;
 namespace asio = boost::asio;
 
-
-using asio::local::stream_protocol;
+using tcp = asio::ip::tcp;
 
 namespace service {
 
-struct CtrlClient::Detail {
-    Detail(const fs::path &ctrl, const std::string &name)
-        : ctrl(ctrl.string(), stream_protocol::endpoint(ctrl.string())
-                , name.empty() ? std::string("client") : name)
-    {}
+constexpr const int NetCtrlClient::DefaultPort;
+
+struct NetCtrlClient::Detail {
+    Detail(const utility::TcpEndpoint &endpoint
+           , const std::string &component
+           , const std::string &secret)
+        : endpoint(endpoint)
+        , ctrl(boost::lexical_cast<std::string>(endpoint), endpoint.value
+               , component)
+        , component(component), secret(secret)
+    {
+        const auto challenge(command(component).front());
+        command(ctrlResponse(challenge, secret));
+    }
 
     std::vector<std::string> command(const std::string &command) {
         return ctrl.command(command);
     }
 
-    detail::CtrlClient<stream_protocol> ctrl;
+    utility::TcpEndpoint endpoint;
+    detail::CtrlClient<tcp> ctrl;
+    const std::string component;
+    const std::string secret;
 };
 
-CtrlClient::CtrlClient(const fs::path &ctrl, const std::string &name)
-    : detail_(std::make_shared<Detail>(ctrl, name))
-{}
-
-std::vector<std::string> CtrlClient::command(const std::string &command)
+NetCtrlClient::NetCtrlClient(const Params &params)
+    : detail_(std::make_shared<Detail>
+              (params.endpoint, params.component, params.secret))
 {
-    return detail().command(command);
 }
 
-bool CtrlClient::parseBoolean(const std::string &line) const
+NetCtrlClient::Params::Params(const std::string &uri)
 {
-    if (line == "true") {
-        return true;
-    } else if (line == "false") {
-        return false;
+    utility::Uri u(uri);
+    if (!ba::iequals(u.scheme(), "ctrl")) {
+        auto tmp(u);
+        tmp.dropAuthInfo(true);
+        LOGTHROW(err1, std::runtime_error)
+            << "URI " << tmp.str() << " is not a ctrl URI.";
     }
 
-    LOGTHROW(err2, std::runtime_error)
-        << "Invalid reply from server: <" << line << ">.";
-    throw;
+    auto port(u.port());
+    if (port < 0) { port = DefaultPort; }
+
+    endpoint = {utility::format("%s:%s", u.host(), port)
+                , utility::TcpEndpoint::ParseFlags::allowResolve };
+    component = u.user();
+    secret = u.password();
+}
+
+std::vector<std::string> NetCtrlClient::command(const std::string &command)
+{
+    return detail().command(command);
 }
 
 } // namespace service
