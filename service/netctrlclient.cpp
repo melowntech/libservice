@@ -61,7 +61,7 @@ struct NetCtrlClient::Detail {
         command(ctrlResponse(challenge, secret));
     }
 
-    std::vector<std::string> command(const std::string &command) {
+    CtrlClientBase::Result command(const std::string &command) {
         return ctrl.command(command);
     }
 
@@ -96,7 +96,7 @@ NetCtrlClient::Params::Params(const std::string &uri)
     secret = u.password();
 }
 
-std::vector<std::string> NetCtrlClient::command(const std::string &command)
+CtrlClientBase::Result NetCtrlClient::command(const std::string &command)
 {
     return detail().command(command);
 }

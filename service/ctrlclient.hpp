@@ -38,26 +38,37 @@
 
 namespace service {
 
+class CtrlClientBase {
+public:
+    virtual ~CtrlClientBase() {}
+
+    using Result = std::vector<std::string>;
+
+    virtual Result command(const std::string &command) = 0;
+
+    template <typename ...Args>
+    std::vector<std::string> command(const std::string &command
+                                     , Args &&...args);
+
+    bool parseBoolean(const std::string &line) const;
+};
+
+std::unique_ptr<CtrlClientBase> ctrlClientFactory(const std::string &uri);
+
 /** Control socket client.
  *
  *  NB: synchronous version only
  */
-class CtrlClient {
+class CtrlClient : public CtrlClientBase {
 public:
     CtrlClient(const boost::filesystem::path &ctrl
                , const std::string &name = std::string());
 
     /** Synchronously sends command and receives reply.
      */
-    std::vector<std::string> command(const std::string &command);
-
-    template <typename ...Args>
-    std::vector<std::string> command(const std::string &command
-                                     , Args &&...args);
+    Result command(const std::string &command) override;
 
     struct Detail;
-
-    bool parseBoolean(const std::string &line) const;
 
 private:
     Detail& detail() { return *detail_; }
@@ -69,8 +80,8 @@ private:
 // inlines
 
 template <typename ...Args>
-std::vector<std::string> CtrlClient::command(const std::string &command
-                                             , Args &&...args)
+CtrlClientBase::Result
+CtrlClientBase::command(const std::string &command, Args &&...args)
 {
     return this->command(utility::concatWithSeparator
                          (" ", command, std::forward<Args>(args)...));

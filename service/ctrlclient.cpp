@@ -67,7 +67,7 @@ std::vector<std::string> CtrlClient::command(const std::string &command)
     return detail().command(command);
 }
 
-bool CtrlClient::parseBoolean(const std::string &line) const
+bool CtrlClientBase::parseBoolean(const std::string &line) const
 {
     if (line == "true") {
         return true;

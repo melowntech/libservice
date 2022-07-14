@@ -21,12 +21,10 @@ else()
     pidfile.hpp pidfile.cpp
     detail/signalhandler.hpp detail/signalhandler.cpp
     ctrlclient.hpp ctrlclient.cpp
-    detail/ctrlclient.hpp
+    detail/ctrlclient.hpp detail/ctrlclient.cpp
     netctrlclient.hpp netctrlclient.cpp
     ctrlhandshake.hpp ctrlhandshake.cpp
     )
-
-  list(APPEND service_EXTRA_DEPENDS Boost_RANDOM)
 endif()
 
 

@@ -37,13 +37,15 @@
 #include "utility/tcpendpoint.hpp"
 #include "utility/ctrlcommand.hpp"
 
+#include "ctrlclient.hpp"
+
 namespace service {
 
 /** Control socket client.
  *
  *  NB: synchronous version only
  */
-class NetCtrlClient {
+class NetCtrlClient : public CtrlClientBase {
 public:
     struct Params {
         utility::TcpEndpoint endpoint;
@@ -66,11 +68,7 @@ public:
 
     /** Synchronously sends command and receives reply.
      */
-    std::vector<std::string> command(const std::string &command);
-
-    template <typename ...Args>
-    std::vector<std::string> command(const std::string &command
-                                     , Args &&...args);
+    Result command(const std::string &command) override;
 
     struct Detail;
 
@@ -82,16 +80,6 @@ private:
 
     std::shared_ptr<Detail> detail_;
 };
-
-// inlines
-
-template <typename ...Args>
-std::vector<std::string> NetCtrlClient::command(const std::string &command
-                                                , Args &&...args)
-{
-    return this->command(utility::concatWithSeparator
-                         (" ", command, std::forward<Args>(args)...));
-}
 
 } // namespace service
 

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2022 Melown Technologies SE
+ * Copyright (c) 2018 Melown Technologies SE
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -24,43 +24,32 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <random>
+#include <boost/asio.hpp>
+#include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 
-#include "utility/md5.hpp"
+#include "dbglog/dbglog.hpp"
 
-#include "ctrlhandshake.hpp"
+#include "utility/cppversion.hpp"
+
+#include "../ctrlclient.hpp"
+#include "../netctrlclient.hpp"
+
+namespace fs = boost::filesystem;
+namespace ba = boost::algorithm;
 
 namespace service {
 
-namespace {
-
-std::random_device rng;
-
-const std::string alphabet("abcdefghijklmnopqrstuvwxyz"
-                           "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                           "1234567890"
-                           "!@#$%^&*()"
-                           "`~-_=+[{]}\\|;:'\",<.>/? ");
-
-} // namespace
-
-std::string ctrlChallenge()
+std::unique_ptr<CtrlClientBase> ctrlClientFactory(const std::string &uri)
 {
-    std::uniform_int_distribution<> index(0, alphabet.size() - 1);
-
-    std::string out;
-
-    for (int i = 0; i < 32; ++i) {
-        out.push_back(alphabet[index(rng)]);
+    if (ba::istarts_with(uri, "ctrl:")) {
+        // network based
+        return std::make_unique<NetCtrlClient>(uri);
     }
 
-    return out;
-}
-
-std::string ctrlResponse(const std::string &challenge
-                         , const std::string &secret)
-{
-    return utility::md5::hash_hex(challenge + ":" + secret);
+    // file-based
+    return std::make_unique<CtrlClient>(uri);
 }
 
 } // namespace service
