@@ -541,7 +541,7 @@ Program::configureImpl(int argc, char *argv[]
                 f.exceptions(std::ifstream::badbit);
 
                 LOG(info2) << "Loading configuration from " << cfg << ":";
-                LOG(info2) << f << std::endl;
+                LOG(info2) << f.rdbuf() << std::endl;
                 f.clear(); // clear fail and eof bits
                 f.seekg(0, std::ios_base::beg); // seek to begin
                 
