@@ -549,6 +549,7 @@ Program::configureImpl(int argc, char *argv[]
 
                 f.clear(); // clear fail and eof bits
                 f.seekg(0, std::ios_base::beg); // seek to begin
+                // Warning, logging before log.mask is set!
                 LOG(info3) << "Loaded configuration from " << cfg << "." << std::endl << f.rdbuf();
                 f.close();
             } catch(const std::ios_base::failure &e) {
