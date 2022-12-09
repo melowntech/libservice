@@ -539,22 +539,18 @@ Program::configureImpl(int argc, char *argv[]
             try {
                 f.open(cfg.c_str());
                 f.exceptions(std::ifstream::badbit);
-
-                LOG(info2) << "Loading configuration from " << cfg << ":";
-                LOG(info2) << f.rdbuf() << std::endl;
-                f.clear(); // clear fail and eof bits
-                f.seekg(0, std::ios_base::beg); // seek to begin
-                
                 auto parsed(po::parse_config_file(f, configs
                             , flags_ & ENABLE_CONFIG_UNRECOGNIZED_OPTIONS));
                 store(parsed, vm);
-                f.close();
 
                 if (flags_ & ENABLE_CONFIG_UNRECOGNIZED_OPTIONS) {
                     add(un, parsed);
                 }
 
-                LOG(info2) << "Loaded configuration from " << cfg << ".";
+                f.clear(); // clear fail and eof bits
+                f.seekg(0, std::ios_base::beg); // seek to begin
+                LOG(info3) << "Loaded configuration from " << cfg << "." << std::endl << f.rdbuf();
+                f.close();
             } catch(const std::ios_base::failure &e) {
                 LOG(fatal) << "Cannot read config file " << cfg << ": "
                            << e.what();
