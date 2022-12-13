@@ -249,7 +249,7 @@ const char *EXTRA_OPTIONS = "\n";
 typedef std::vector<std::string> Strings;
 typedef std::vector<boost::filesystem::path> Files;
 
-Strings parseResponseFiles(const Files &files)
+Strings parseResponseFiles(const Files &files, std::vector<std::stringstream> & dumpOutput)
 {
     Strings args;
 
@@ -271,6 +271,11 @@ Strings parseResponseFiles(const Files &files)
 
         std::copy(tokenizer.begin(), tokenizer.end()
                   , std::back_inserter(args));
+
+        is.clear(); // clear fail and eof bits
+        is.seekg(0, std::ios_base::beg); // seek to begin
+        dumpOutput.emplace_back();
+        dumpOutput.back() << "Loaded response file from " << file << ", contents:" << std::endl << is.rdbuf() << std::endl;
     }
 
     return args;
@@ -372,6 +377,8 @@ Program::configureImpl(int argc, char *argv[]
          , "set dbglog output file (none by default)")
         ("log.console", po::value<bool>()->default_value(true)
          , "enable console logging")
+        ("log.dumpConfig", po::value<bool>()->default_value(false)->implicit_value(true)
+         , "enable dumping of command line, response files and config files")
         ("log.timePrecision", po::value<unsigned short>()->default_value(0)
          , "set logged time sub-second precision (0-6 decimals)")
         ("log.file.truncate", "truncate log file on startup")
@@ -423,9 +430,22 @@ Program::configureImpl(int argc, char *argv[]
     full.add(all).add(responseFile);
     parse(createParser(full, positionals, flags_, extraParser(), argc, argv));
 
+    std::vector<std::stringstream> dumpOutput;
+    {
+        std::stringstream cmdline;
+        for (int i = 0; i < argc; i++) {
+            if (i > 0) {
+                cmdline << " ";    
+            }
+            cmdline << argv[i];
+        }
+        dumpOutput.emplace_back();
+        dumpOutput.back() << "Command line: " << std::endl << cmdline.rdbuf() << std::endl;
+    }
+
     if (vm.count("response-file")) {
         // parse response file as a cmdline, ignore response file
-        const auto args(parseResponseFiles(vm["response-file"].as<Files>()));
+        const auto args(parseResponseFiles(vm["response-file"].as<Files>(), dumpOutput));
         parse(createParser(all, positionals, flags_, {}, args));
     }
 
@@ -529,6 +549,16 @@ Program::configureImpl(int argc, char *argv[]
     // and absolutize them
     for (auto &cfg : cfgs) { cfg = absolute(cfg); }
 
+    bool dumpConfig(vm.count("log.dumpConfig") && vm["log.dumpConfig"].as<bool>());
+
+    if (dumpConfig) {
+        // dump command line and response files
+        for (const auto & d : dumpOutput) {
+            // Warning, logging before log.mask is set!
+            LOG(info3) << d.rdbuf();
+        }
+    }
+
     if (!cfgs.empty()) {
         po::options_description configs(name);
         configs.add(genericConfig).add(config);
@@ -542,13 +572,20 @@ Program::configureImpl(int argc, char *argv[]
                 auto parsed(po::parse_config_file(f, configs
                             , flags_ & ENABLE_CONFIG_UNRECOGNIZED_OPTIONS));
                 store(parsed, vm);
-                f.close();
 
                 if (flags_ & ENABLE_CONFIG_UNRECOGNIZED_OPTIONS) {
                     add(un, parsed);
                 }
 
-                LOG(info3) << "Loaded configuration from " << cfg << ".";
+                f.clear(); // clear fail and eof bits
+                f.seekg(0, std::ios_base::beg); // seek to begin
+                // Warning, logging before log.mask is set!
+                if (dumpConfig) {
+                    LOG(info3) << "Loaded configuration from " << cfg << ", contents:" << std::endl << f.rdbuf() << std::endl;
+                } else {
+                    LOG(info3) << "Loaded configuration from " << cfg << ".";
+                }
+                f.close();
             } catch(const std::ios_base::failure &e) {
                 LOG(fatal) << "Cannot read config file " << cfg << ": "
                            << e.what();
