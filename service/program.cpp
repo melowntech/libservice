@@ -571,10 +571,13 @@ Program::configureImpl(int argc, char *argv[]
 
                 f.clear(); // clear fail and eof bits
                 f.seekg(0, std::ios_base::beg); // seek to begin
-                // Warning, logging before log.mask, log.file, etc. is set!
-                LOG(info3) << "Loaded configuration from " << cfg << ".";
-                dumpOutput.emplace_back();
-                dumpOutput.back() << "Loaded configuration from " << cfg << ", contents:" << std::endl << f.rdbuf() << std::endl;
+                if (dumpConfig) {
+                    dumpOutput.emplace_back();
+                    dumpOutput.back() << "Loaded configuration from " << cfg << ", contents:" << std::endl << f.rdbuf() << std::endl;
+                } else {
+                    // Warning, logging before log.mask, log.file, etc. is set!
+                    LOG(info3) << "Loaded configuration from " << cfg << ".";
+                }
                 f.close();
             } catch(const std::ios_base::failure &e) {
                 LOG(fatal) << "Cannot read config file " << cfg << ": "
