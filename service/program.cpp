@@ -635,7 +635,7 @@ Program::configureImpl(int argc, char *argv[]
     }
 
     if (dumpConfig) {
-        // dump command line and response files
+        // dump command line, response files and config files
         for (const auto & d : dumpOutput) {
             LOG(info3) << d.rdbuf();
         }
