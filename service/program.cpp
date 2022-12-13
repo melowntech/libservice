@@ -551,14 +551,6 @@ Program::configureImpl(int argc, char *argv[]
 
     bool dumpConfig(vm.count("log.dumpConfig") && vm["log.dumpConfig"].as<bool>());
 
-    if (dumpConfig) {
-        // dump command line and response files
-        for (const auto & d : dumpOutput) {
-            // Warning, logging before log.mask is set!
-            LOG(info3) << d.rdbuf();
-        }
-    }
-
     if (!cfgs.empty()) {
         po::options_description configs(name);
         configs.add(genericConfig).add(config);
@@ -579,10 +571,11 @@ Program::configureImpl(int argc, char *argv[]
 
                 f.clear(); // clear fail and eof bits
                 f.seekg(0, std::ios_base::beg); // seek to begin
-                // Warning, logging before log.mask is set!
                 if (dumpConfig) {
-                    LOG(info3) << "Loaded configuration from " << cfg << ", contents:" << std::endl << f.rdbuf() << std::endl;
+                    dumpOutput.emplace_back();
+                    dumpOutput.back() << "Loaded configuration from " << cfg << ", contents:" << std::endl << f.rdbuf() << std::endl;
                 } else {
+                    // Warning, logging before log.mask, log.file, etc. is set!
                     LOG(info3) << "Loaded configuration from " << cfg << ".";
                 }
                 f.close();
@@ -639,6 +632,13 @@ Program::configureImpl(int argc, char *argv[]
     if (vm.count("log.timePrecision")) {
         dbglog::log_time_precision
             (vm["log.timePrecision"].as<unsigned short>());
+    }
+
+    if (dumpConfig) {
+        // dump command line, response files and config files
+        for (const auto & d : dumpOutput) {
+            LOG(info3) << d.rdbuf();
+        }
     }
 
     boost::optional<UnrecognizedParser> unrParser;
