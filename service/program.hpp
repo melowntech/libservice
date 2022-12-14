@@ -62,6 +62,7 @@ constexpr int ENABLE_UNRECOGNIZED_OPTIONS = 0x02;
 constexpr int DISABLE_EXCESSIVE_LOGGING = 0x04;
 constexpr int SHOW_LICENCE_INFO = 0x08;
 constexpr int ENABLE_CONFIG_UNRECOGNIZED_OPTIONS = 0x10;
+constexpr int SHOW_EXPANDED_COMMAND_LINE = 0x20;
 
 struct UnrecognizedOptions;
 
