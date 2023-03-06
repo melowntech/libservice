@@ -27,6 +27,7 @@
 #define shared_service_detail_signalhandler_hpp_included_
 
 #include <memory>
+#include <set>
 
 #include <boost/noncopyable.hpp>
 #include <boost/asio.hpp>
@@ -205,6 +206,7 @@ private:
 
     asio::io_service ios_;
     asio::signal_set signals_;
+    std::set<int> userRegisteredSignals_;
     Allocator mem_;
     Terminator terminator_;
     std::atomic_bool &terminated_;

@@ -247,10 +247,15 @@ void SignalHandler::signal(const boost::system::error_code &e, int signo)
         break;
 
     default:
-        // user-registered signal
-        owner_.signal(signo);
         break;
     }
+
+    // notify owner about signal it has registered
+    if (userRegisteredSignals_.count(signo)) {
+        // user-registered signal
+        owner_.signal(signo);
+    }
+
     startSignals();
 }
 
@@ -477,7 +482,10 @@ void SignalHandler::atFork(utility::AtFork::Event event)
 
 void SignalHandler::registerSignal(int signo)
 {
-    ios_.post([this, signo]() { signals_.add(signo); });
+    ios_.post([this, signo]() {
+        signals_.add(signo);
+        userRegisteredSignals_.insert(signo);
+    });
 }
 
 struct ModeParser {
