@@ -32,7 +32,7 @@
 #include <fstream>
 #include <sstream>
 #include <set>
-#include <locale>
+#include <clocale>
 
 #include <boost/format.hpp>
 #include <boost/filesystem.hpp>
@@ -436,7 +436,7 @@ Program::configureImpl(int argc, char *argv[]
         std::stringstream cmdline;
         for (int i = 0; i < argc; i++) {
             if (i > 0) {
-                cmdline << " ";    
+                cmdline << " ";
             }
             cmdline << argv[i];
         }
