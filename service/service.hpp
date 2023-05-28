@@ -40,7 +40,7 @@
 namespace service {
 
 namespace detail {
-    struct SignalHandler;
+    class SignalHandler;
 } // namespace detail
 
 class Service : protected Program, public utility::Runnable {
@@ -113,7 +113,7 @@ protected:
 
     virtual int run() = 0;
 
-    virtual bool help(std::ostream &out, const std::string &what);
+    virtual bool help(std::ostream &out, const std::string &what) const;
 
     virtual void preConfigHook(const po::variables_map &vars);
 
