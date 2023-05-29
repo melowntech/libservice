@@ -711,7 +711,7 @@ void Service::configure(const std::vector<std::string>&)
          "although it is not processing them. Go fix your program.");
 }
 
-bool Service::help(std::ostream &, const std::string &)
+bool Service::help(std::ostream &, const std::string &) const
 {
     return false;
 }

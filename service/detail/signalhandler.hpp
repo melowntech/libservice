@@ -81,7 +81,10 @@ public:
 
 private:
     bi::mapped_region mem_;
-    std::size_t size_;
+#ifdef __clang__
+    [[maybe_unused]]
+#endif
+    std::size_t size_; // TODO: check size
     std::size_t offset_;
 };
 
