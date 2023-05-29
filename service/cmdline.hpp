@@ -46,11 +46,11 @@ protected:
 
     virtual void configure(const po::variables_map &vars) = 0;
 
-    virtual void configure(const std::vector<std::string> &unrecognized);
+    void configure(const std::vector<std::string> &unrecognized) override;
 
     virtual int run() = 0;
 
-    virtual bool help(std::ostream &out, const std::string &what) const;
+    bool help(std::ostream &out, const std::string &what) const override;
 
 private:
     int handleOperator(int argc, char *argv[]);

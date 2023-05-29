@@ -52,9 +52,9 @@ public:
 
     int operator()(int argc, char *argv[]);
 
-    bool isRunning();
+    bool isRunning() override;
 
-    void stop();
+    void stop() override;
 
     /** Adds/removes this process to list of processes that are mark global
      *  terminate flag on terminate signal. All other processes handle terminate
@@ -104,7 +104,7 @@ protected:
 
     virtual void configure(const po::variables_map &vars) = 0;
 
-    virtual void configure(const std::vector<std::string> &unrecognized);
+    void configure(const std::vector<std::string> &unrecognized) override;
 
     /** Returned Cleanup will be destroyed when going down. Just return pointer
      *  to your cleanup code
@@ -113,9 +113,9 @@ protected:
 
     virtual int run() = 0;
 
-    virtual bool help(std::ostream &out, const std::string &what) const;
+    bool help(std::ostream &out, const std::string &what) const override;
 
-    virtual void preConfigHook(const po::variables_map &vars);
+    void preConfigHook(const po::variables_map &vars) override;
 
     /** Code that will be run under original persona before persona is switched.
      *
