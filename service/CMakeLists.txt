@@ -1,5 +1,5 @@
 # bump version here
-set(service_VERSION 1.10)
+set(service_VERSION 1.11)
 
 set(service_EXTRA_DEPENDS)
 
@@ -24,6 +24,7 @@ else()
     detail/ctrlclient.hpp detail/ctrlclient.cpp
     netctrlclient.hpp netctrlclient.cpp
     ctrlhandshake.hpp ctrlhandshake.cpp
+    pipenotifier.hpp pipenotifier.cpp
     )
 endif()
 

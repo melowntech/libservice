@@ -66,14 +66,38 @@ Service::~Service()
 namespace {
 
 Persona switchPersona(dbglog::module &log, const Service::Config &config
-                      , bool privilegesRegainable)
+                      , PersonaSwitchMode privilegesRegainable)
 {
     const auto &username(config.username);
     const auto &groupname(config.groupname);
 
-    // choose proper uid/gid setter
-    auto& uidSetter(privilegesRegainable ? ::seteuid : ::setuid);
-    auto& gidSetter(privilegesRegainable ? ::setegid : ::setgid);
+    const auto &uidSetter([privilegesRegainable](uid_t uid) -> int
+    {
+        switch (privilegesRegainable) {
+        case PersonaSwitchMode::setRealId:
+            return ::setuid(uid);
+        case PersonaSwitchMode::setEffectiveId:
+            return ::seteuid(uid);
+        case PersonaSwitchMode::setEffectiveAndSavedId:
+            return ::setreuid(-1, uid);
+        }
+        errno = EINVAL;
+        return -1;
+    });
+
+    const auto &gidSetter([privilegesRegainable](gid_t gid) -> int
+    {
+        switch (privilegesRegainable) {
+        case PersonaSwitchMode::setRealId:
+            return ::setgid(gid);
+        case PersonaSwitchMode::setEffectiveId:
+            return ::setegid(gid);
+        case PersonaSwitchMode::setEffectiveAndSavedId:
+            return ::setregid(-1, gid);
+        }
+        errno = EINVAL;
+        return -1;
+    });
 
     bool switchUid(false);
     bool switchGid(false);
