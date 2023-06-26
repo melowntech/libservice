@@ -46,6 +46,23 @@ struct Persona {
 
 };
 
+enum class PersonaSwitchMode {
+    /** see man setuid/setgid
+     *  one-way switch, cannot go back
+     */
+    setRealId
+    /** see man seteuid/setegid
+     *  can go back to previous user
+     */
+    , setEffectiveId
+
+    /** see man setreuid/setreguid (keeps real ids)
+     * can go back to previous user
+     * sets saved set-user-ID as well -> can be signalled by new persona
+     */
+    , setEffectiveAndSavedId
+};
+
 /** Run call with elevated rights (process has been started with) and switch
  *  back to normal rights.
  */

@@ -119,11 +119,11 @@ protected:
 
     /** Code that will be run under original persona before persona is switched.
      *
-     *  Returns flag whether original persona should be regainable:
-     *      true -> use seteuid/setegid
-     *      false -> use setuid/setgid
+     *  Returns flag whether original persona should be regainable.
      */
-    virtual bool prePersonaSwitch() { return false; }
+    virtual PersonaSwitchMode prePersonaSwitch() {
+        return PersonaSwitchMode::setRealId;
+    }
 
     /** Code that will be run under new persona after persona is switched.
      */
