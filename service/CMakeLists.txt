@@ -24,8 +24,12 @@ else()
     detail/ctrlclient.hpp detail/ctrlclient.cpp
     netctrlclient.hpp netctrlclient.cpp
     ctrlhandshake.hpp ctrlhandshake.cpp
-    pipenotifier.hpp pipenotifier.cpp
     )
+  if (NOT APPLE)
+    list(APPEND service_SOURCES
+      pipenotifier.hpp pipenotifier.cpp
+    )
+  endif()
 endif()
 
 

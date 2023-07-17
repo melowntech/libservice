@@ -42,9 +42,9 @@ public:
 protected:
     virtual void configuration(po::options_description &cmdline
                                , po::options_description &config
-                               , po::positional_options_description &pd) = 0;
+                               , po::positional_options_description &pd) override = 0;
 
-    virtual void configure(const po::variables_map &vars) = 0;
+    virtual void configure(const po::variables_map &vars) override = 0;
 
     void configure(const std::vector<std::string> &unrecognized) override;
 
