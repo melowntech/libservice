@@ -166,7 +166,9 @@ std::string Program::versionInfo() const
 {
     std::ostringstream os;
     os << name << ' ' << version
+#ifndef WITH_CCACHE
        << (" (built on " __DATE__ " " __TIME__ " at ")
+#endif
        << utility::buildsys::Hostname;
 
     if (*detail::gitHash) {
