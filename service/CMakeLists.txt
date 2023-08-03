@@ -33,6 +33,11 @@ else()
 endif()
 
 
+### vvv add build date and time vvv
+string(TIMESTAMP BUILD_TIMESTAMP "%Y-%m-%d %H:%M:%S")
+configure_file(buildtimestamp.hpp.in buildtimestamp.hpp ESCAPE_QUOTES @ONLY)
+### ^^^ add build date and time ^^^
+
 ### vvv git hash functionality vvv
 
 if (GIT_FOUND)
