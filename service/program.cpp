@@ -44,6 +44,7 @@
 #include "utility/path.hpp"
 
 #include "githash.hpp"
+#include "buildtimestamp.hpp"
 
 #include "program.hpp"
 
