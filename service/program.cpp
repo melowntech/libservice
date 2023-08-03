@@ -167,8 +167,11 @@ std::string Program::versionInfo() const
 {
     std::ostringstream os;
     os << name << ' ' << version
-       << (" (built on " << detail::buildTimestamp << " at ")
-       << utility::buildsys::Hostname;
+       << " (built ";
+    if (*detail::buildTimestamp) {
+        os << "on " << detail::buildTimestamp << " ";
+    }
+    os << "at " << utility::buildsys::Hostname;
 
     if (*detail::gitHash) {
         os << " from git commit " << detail::gitHash;
