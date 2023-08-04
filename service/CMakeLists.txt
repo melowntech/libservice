@@ -34,8 +34,9 @@ endif()
 
 ### vvv add build date and time vvv
 string(TIMESTAMP service_build_timestamp "%Y-%m-%d %H:%M:%S")
-configure_file(buildtimestamp.cpp.in buildtimestamp.cpp ESCAPE_QUOTES @ONLY)
-list(APPEND service_SOURCES buildtimestamp.hpp buildtimestamp.cpp)
+configure_file(buildtimestamp.cpp.in ${CMAKE_CURRENT_BINARY_DIR}/buildtimestamp.cpp 
+  ESCAPE_QUOTES @ONLY)
+list(APPEND service_SOURCES buildtimestamp.hpp ${CMAKE_CURRENT_BINARY_DIR}/buildtimestamp.cpp)
 ### ^^^ add build date and time ^^^
 
 ### vvv git hash functionality vvv
@@ -51,9 +52,9 @@ if (GIT_FOUND)
 else()
   set(service_git_hash "")
 endif()
-
-configure_file(githash.cpp.in githash.cpp ESCAPE_QUOTES @ONLY)
-list(APPEND service_SOURCES githash.hpp githash.cpp)
+configure_file(githash.cpp.in ${CMAKE_CURRENT_BINARY_DIR}/githash.cpp 
+  ESCAPE_QUOTES @ONLY)
+list(APPEND service_SOURCES githash.hpp ${CMAKE_CURRENT_BINARY_DIR}/githash.cpp)
 ### ^^^ git hash functionality ^^^
 
 

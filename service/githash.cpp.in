@@ -1,2 +1,2 @@
-#include "githash.hpp"
+#include "service/githash.hpp"
 const char *service::detail::gitHash = "@service_git_hash@";

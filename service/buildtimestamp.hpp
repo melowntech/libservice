@@ -3,7 +3,7 @@
 
 namespace service { namespace detail {
 
-const char *buildTimestamp;
+extern const char *buildTimestamp;
 
 } } // namespace service::detail
 
