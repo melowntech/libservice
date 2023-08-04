@@ -32,35 +32,29 @@ else()
   endif()
 endif()
 
-
 ### vvv add build date and time vvv
-string(TIMESTAMP BUILD_TIMESTAMP "%Y-%m-%d %H:%M:%S")
-configure_file(buildtimestamp.hpp.in buildtimestamp.hpp ESCAPE_QUOTES @ONLY)
+string(TIMESTAMP service_build_timestamp "%Y-%m-%d %H:%M:%S")
+configure_file(buildtimestamp.cpp.in ${CMAKE_CURRENT_BINARY_DIR}/buildtimestamp.cpp 
+  ESCAPE_QUOTES @ONLY)
+list(APPEND service_SOURCES buildtimestamp.hpp ${CMAKE_CURRENT_BINARY_DIR}/buildtimestamp.cpp)
 ### ^^^ add build date and time ^^^
 
 ### vvv git hash functionality vvv
-
 if (GIT_FOUND)
   execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
     RESULT_VARIABLE result
-    OUTPUT_VARIABLE git_hash
+    OUTPUT_VARIABLE service_git_hash
     OUTPUT_STRIP_TRAILING_WHITESPACE
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
   if (result)
-    set(git_hash "")
+    set(service_git_hash "")
   endif()
 else()
-  set(git_hash "")
+  set(service_git_hash "")
 endif()
-
-set(githash_in githash.hpp.in)
-set(githash_out ${CMAKE_CURRENT_BINARY_DIR}/githash.hpp)
-
-configure_file(${githash_in} ${githash_out}
+configure_file(githash.cpp.in ${CMAKE_CURRENT_BINARY_DIR}/githash.cpp 
   ESCAPE_QUOTES @ONLY)
-
-list(APPEND service_SOURCES ${githash_out})
-
+list(APPEND service_SOURCES githash.hpp ${CMAKE_CURRENT_BINARY_DIR}/githash.cpp)
 ### ^^^ git hash functionality ^^^
 
 

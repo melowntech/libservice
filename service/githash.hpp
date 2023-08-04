@@ -3,7 +3,7 @@
 
 namespace service { namespace detail {
 
-const char *gitHash = "@git_hash@";
+extern const char *gitHash;
 
 } } // namespace service::detail
 
