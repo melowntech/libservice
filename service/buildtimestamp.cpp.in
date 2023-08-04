@@ -1,0 +1,2 @@
+#include "buildtimestamp.hpp"
+const char *service::detail::buildTimestamp = "@service_build_timestamp@";

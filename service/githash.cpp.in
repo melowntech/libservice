@@ -1,0 +1,2 @@
+#include "githash.hpp"
+const char *service::detail::gitHash = "@service_git_hash@";
